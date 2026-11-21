@@ -7,7 +7,7 @@ name: 서버 배포
 on:
   push:
     branches: [main]
-    paths: ['**/*.gs', '.github/workflows/deploy-server.yml']
+    paths: ['**/*.gs', '.github/workflows/deploy-server.yml', 'server-ids.env']
   workflow_dispatch:
 concurrency: server-deploy
 permissions:
@@ -16,6 +16,8 @@ env:
   CODE: Code.gs        # 저장소 안 서버 코드 위치
   SCRIPT_ID: ''        # Apps Script 프로젝트 설정 > 스크립트 ID (비우면 찾아 줌)
   DEPLOY_ID: ''        # 앱이 부르는 https://script.google.com/macros/s/○○○/exec 의 ○○○ (비우면 웹앱 배포가 하나일 때 그것)
+  CREATE_IF_MISSING: 1 # 서버 번호가 없으면(server-ids.env 도 없으면) 찾지 않고 새로 만든다 — 새 앱 전용
+  TITLE: 출발 도우미
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -33,6 +35,26 @@ jobs:
           printf '%s' "$CLASPRC" > ~/.clasprc.json; trap 'rm -f ~/.clasprc.json' EXIT
           C="npx -y @google/clasp@2.4.2"; ROOT=$PWD
           fns() { grep -oE '^(async )?function [A-Za-z0-9_$]+' "$1" | sort -u; }
+          # 만들어 둔 서버 번호가 있으면 읽는다 (워크플로 파일은 Actions 가 고칠 수 없어서 따로 둔다)
+          [ -z "$SCRIPT_ID" ] && [ -f server-ids.env ] && . ./server-ids.env
+          # 처음이면 서버(Apps Script 프로젝트)를 새로 만들고 웹 앱으로 배포한다 — 사용자가 편집기에서 만들 필요 없게
+          if [ -z "$SCRIPT_ID" ] && [ "$CREATE_IF_MISSING" = 1 ]; then
+            mkdir gas && cd gas
+            O=$($C create --title "$TITLE" --type standalone 2>&1); echo "$O" | grep -v -i token
+            SCRIPT_ID=$(grep -oE '"scriptId" *: *"[^"]+"' .clasp.json | cut -d'"' -f4)
+            [ -n "$SCRIPT_ID" ] || { echo "::error::서버 프로젝트를 만들지 못했어요: $(echo "$O" | tail -1)"; exit 1; }
+            printf '%s' '{"timeZone":"Asia/Seoul","exceptionLogging":"STACKDRIVER","runtimeVersion":"V8","webapp":{"executeAs":"USER_DEPLOYING","access":"ANYONE_ANONYMOUS"}}' > appsscript.json
+            rm -f *.js *.gs; cp "$ROOT/$CODE" Code.js
+            P=$($C push -f 2>&1); echo "$P"; echo "$P" | grep -q Pushed || { echo "::error::붙여 넣기 실패: $(echo "$P" | tail -1)"; exit 1; }
+            D=$($C deploy -d "첫 배포 ${GITHUB_SHA::7}" 2>&1); echo "$D"
+            DEPLOY_ID=$(echo "$D" | grep -oE 'AKfyc[A-Za-z0-9_-]+' | head -1)
+            [ -n "$DEPLOY_ID" ] || { echo "::error::웹 앱 배포 실패: $(echo "$D" | tail -1)"; exit 1; }
+            cd "$ROOT"; printf 'SCRIPT_ID=%s\nDEPLOY_ID=%s\n' "$SCRIPT_ID" "$DEPLOY_ID" > server-ids.env
+            git config user.name "server-create"; git config user.email "actions@users.noreply.github.com"
+            git add server-ids.env && git commit -qm "서버 새로 만듦 (번호 기록)" && git push -q
+            echo "::notice::서버를 새로 만들고 배포했어요 @1 · 편집기 https://script.google.com/d/$SCRIPT_ID/edit 에서 setup() 을 한 번 실행해 주세요"
+            exit 0
+          fi
           # 1) 프로젝트 찾기
           if [ -z "$SCRIPT_ID" ]; then
             best=''; bs=0
