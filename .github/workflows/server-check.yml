@@ -1,0 +1,27 @@
+# 서버 점검 — 서버가 켜져 있는지, 처음 준비(setup)·키·장소가 들어갔는지 "있다/없다"만 확인한다 (값은 보지 않음)
+name: 서버 점검
+on:
+  push:
+    branches: [main]
+    paths: ['server-ids.env', 'Code.gs', '.github/workflows/server-check.yml']
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 점검
+        run: |
+          [ -f server-ids.env ] || { echo "::warning::아직 서버가 없어요"; exit 0; }
+          . ./server-ids.env
+          # 자동 배포가 새 버전을 올릴 시간을 준다
+          [ "$GITHUB_EVENT_NAME" = push ] && sleep 120
+          U="https://script.google.com/macros/s/$DEPLOY_ID/exec"
+          R=$(curl -sL -m 60 -H 'Content-Type: text/plain;charset=utf-8' --data '{"action":"health"}' "$U" || true)
+          if echo "$R" | grep -q '"ok":true'; then
+            echo "::notice::서버 응답: $(echo "$R" | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];n={"setup":"처음 준비(setup)","kakao":"카카오 키","tg":"텔레그램 토큰","chat":"텔레그램 대화방","places":"장소 3곳","trigger":"알림 확인(5분마다)"};print(" · ".join(n[k]+(" ✓" if v else " ✗") for k,v in d.items()))')"
+          elif echo "$R" | grep -qiE 'accounts.google|authoriz|권한|로그인'; then
+            echo "::warning::서버가 아직 허용(권한 승인)을 받지 못했어요 — 편집기에서 setup 을 실행하고 허용을 눌러 주세요"
+          else
+            echo "::warning::서버 응답이 이상해요: $(echo "$R" | head -c 200 | tr '\n' ' ')"
+          fi

@@ -50,6 +50,12 @@ function out_(obj, cb) {
 }
 function handle_(b) {
   try {
+    // 점검(GitHub Actions): 키·주소 값은 돌려주지 않고 있는지 여부만
+    if (b.action === 'health') {
+      const pl = json_('PLACES', {});
+      return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), tg: !!P.getProperty('TG_TOKEN'),
+        chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick') } };
+    }
     const key = P.getProperty('APP_KEY');
     if (!key) return { ok: false, code: 'setup', message: '서버 준비가 아직이에요. 편집기에서 setup() 을 한 번 실행해 주세요' };
     if (String(b.key || '') !== key) return { ok: false, code: 'auth', message: '앱 암호가 맞지 않아요. 설정에서 다시 넣어 주세요' };
