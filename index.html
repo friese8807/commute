@@ -560,7 +560,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795274823';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795276475';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -778,9 +778,12 @@ function bestLine(d) {
   if (b.t === n.t || gain < 3) return `<div class="best same"><svg class="ak-ic" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg><span>${n.live === false ? '이 시각' : '지금'} 떠나는 게 가장 빨라요. 앞으로 ${Math.round((d.slots.at(-1).t - n.t) / 36e5)}시간 동안 더 빨라지지 않아요</span></div>`;
   return `<div class="best"><svg class="ak-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><b>${hm(b.t)} 출발</b>이 가장 빨라요 · <b>${gain}분</b> 덜 걸려요<br>${dur(b.min)} · 도착 ${hm(b.t + b.min * 6e4)}</span></div>`;
 }
-/* 전기차는 유료도로 통행료 50% 감면 (전기차로 등록된 하이패스 기준). 10원 단위로 */
+/* 전기·수소차 고속도로 통행료 감면율 (한국도로공사, 2025년 3년 연장 발표): 2025년 40% → 2026년 30% → 2027년 20%, 2027년 말 종료.
+   2028년부터는 0%로 두고, 다시 연장되면 이 표에 한 줄 더한다. 하이패스 단말기에 전기차 할인 코드가 등록돼 있어야 받는다 */
+const EV_RATE = { 2025: .4, 2026: .3, 2027: .2 };
+const evRate = () => EV_RATE[+kstKey(NOW()).slice(0, 4)] || 0;
 const isEv = () => (S.cfg && S.cfg.ev != null) ? !!S.cfg.ev : LS.get('ev', true);
-const tollTxt = t => !t ? '없음' : isEv() ? `${AppKit.num(Math.round(t * .5 / 10) * 10)}원</b><small style="margin:2px 0 0">전기차 50% · 원래 ${AppKit.num(t)}원</small><b hidden>` : AppKit.num(t) + '원';
+const tollTxt = t => { const r = evRate(); return !t ? '없음' : isEv() && r ? `${AppKit.num(Math.round(t * (1 - r) / 10) * 10)}원</b><small style="margin:2px 0 0">전기차 ${Math.round(r * 100)}% · 원래 ${AppKit.num(t)}원</small><b hidden>` : AppKit.num(t) + '원'; };
 const facts = d => `<div class="facts"><div class="fact"><small>거리</small><b class="num">${d.dist.toFixed(1)}km</b></div><div class="fact"><small>통행료</small><b class="num">${tollTxt(d.toll)}</b></div><div class="fact"><small>주요 도로</small><b>${esc((d.roads || []).slice(0, 3).join(' · ') || '—')}</b></div></div>`;
 function hourTicks(d, pct) {
   const s = d.slots, t0 = s[0].t, tN = s.at(-1).t, out = [];
@@ -910,7 +913,7 @@ function viewSet() {
     ${S.found ? `<p class="note" style="margin-bottom:0">찾은 곳 — 회사: ${esc(S.found.work)} · 집: ${esc(S.found.home)} · 숙소: ${esc(S.found.dorm)}</p>` : ''}
     <p class="note" style="margin-bottom:0">주소는 내 구글 계정의 서버에만 보관해요. 이 휴대폰과 공개 저장소에는 남지 않아요.</p></div>`;
   const car = `<div class="card"><h2>내 차</h2><div class="seg"><button type="button" data-ev="1" class="${isEv() ? 'on' : ''}">전기차</button><button type="button" data-ev="0" class="${isEv() ? '' : 'on'}">일반</button></div>
-    <p class="note" style="margin-bottom:0">전기차는 유료도로 통행료를 50% 깎아서 보여 줘요(전기차로 등록된 하이패스 기준). 걸리는 시간은 같아요.</p></div>
+    <p class="note" style="margin-bottom:0">${evRate() ? `전기차는 올해 고속도로 통행료 할인율 ${Math.round(evRate() * 100)}%로 깎아서 보여 줘요(2026년 30% · 2027년 20% · 2027년 말 종료). 하이패스에 전기차 할인 코드가 등록돼 있어야 해요.` : '전기차 통행료 할인이 끝나 원래 통행료로 보여 줘요.'}</p></div>
     <div class="card"><h2>카카오 지도 키 ${c.jsKey ? '<span class="badge">연결됨</span>' : '<span class="badge off">아직 없음</span>'}</h2>
     <ol class="steps"><li>developers.kakao.com → 출발 도우미 앱 → <b>앱 키</b>에서 <b>JavaScript 키</b>를 복사해요.</li>
       <li>같은 앱 → <b>플랫폼 → Web</b> → 사이트 도메인에 <code>https://friese8807.github.io</code> 를 넣어요.</li>
@@ -956,7 +959,7 @@ document.addEventListener('click', async e => {
   if ((b = q('[data-traffic]'))) { const on = !LS.get('traffic', true); LS.set('traffic', on); b.classList.toggle('on', on); const m = b.closest('[data-map]')._map;
     if (m) on ? m.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC) : m.removeOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC); AppKit.toast(on ? '주변 도로 교통도 보여 줘요' : '내 길만 보여 줘요'); return; }
   if ((b = q('[data-ev]'))) { const v = b.dataset.ev === '1'; LS.set('ev', v); if (S.cfg) S.cfg.ev = v; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-    AppKit.toast(v ? '전기차 통행료(50% 할인)로 보여 줄게요' : '일반 통행료로 보여 줄게요'); api('save', { ev: v }).catch(er => AppKit.toast(er.message)); return; }
+    AppKit.toast(v ? `전기차 통행료(${Math.round(evRate() * 100)}% 할인)로 보여 줄게요` : '일반 통행료로 보여 줄게요'); api('save', { ev: v }).catch(er => AppKit.toast(er.message)); return; }
   if ((b = q('[data-seg]'))) {
     const k = b.dataset.seg, v = +b.dataset.v; LS.set(k, v); if (S.cfg) S.cfg[k] = v;
     b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
