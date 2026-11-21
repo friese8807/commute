@@ -1,4 +1,4 @@
-# 서버 점검 — 서버가 켜져 있는지, 처음 준비(setup)·키·장소가 들어갔는지 "있다/없다"만 확인한다 (값은 보지 않음)
+# 서버 점검 — 서버가 켜져 있는지, 처음 준비(setup)·키·장소가 들어갔는지 "있다/없다"만 확인한다 (값은 보지 않음). 다시 돌리려면 이 파일을 건드려 push
 name: 서버 점검
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
           [ -f server-ids.env ] || { echo "::warning::아직 서버가 없어요"; exit 0; }
           . ./server-ids.env
           # 자동 배포가 새 버전을 올릴 시간을 준다
-          [ "$GITHUB_EVENT_NAME" = push ] && sleep 120
+          git diff --quiet HEAD~1 HEAD -- Code.gs 2>/dev/null || sleep 120
           U="https://script.google.com/macros/s/$DEPLOY_ID/exec"
           R=$(curl -sL -m 60 -H 'Content-Type: text/plain;charset=utf-8' --data '{"action":"health"}' "$U" || true)
           if echo "$R" | grep -q '"ok":true'; then
