@@ -209,6 +209,15 @@ html{background:var(--solid)}
 .map .ov button{border:0;background:var(--solid);color:var(--ink);font:inherit;font-size:12px;font-weight:700;border-radius:10px;padding:6px 10px;box-shadow:0 1px 4px rgba(0,0,0,.18);min-height:32px}
 .map .ov button.on{background:var(--accent);color:var(--on-accent)}
 .map .why2{position:absolute;left:8px;bottom:6px;font-size:10.5px;color:var(--muted)}
+.tbar{position:relative;display:flex;align-items:center;margin:20px 14px 4px;height:26px}
+.tbar .tr{flex:1;display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--line);box-shadow:0 0 0 3px var(--solid),0 1px 6px 3px rgba(0,0,0,.12)}
+.tbar .tr i{display:block;height:100%;min-width:2px}
+.tbar .pt{position:absolute;top:50%;width:22px;height:22px;margin-top:-11px;border-radius:50%;border:3px solid var(--solid);box-shadow:0 1px 4px rgba(0,0,0,.25);display:grid;place-items:center;z-index:1}
+.tbar .pt.a{left:-12px;background:var(--accent)}.tbar .pt.b{right:-12px;background:var(--ink)}
+.tbar .pt svg{width:11px;height:11px;fill:#fff}.tbar .pt.b svg{fill:var(--solid)}
+.tbar .jm{position:absolute;bottom:100%;transform:translateX(-50%);font-size:10.5px;font-weight:800;white-space:nowrap;margin-bottom:1px}
+.tbx{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin:2px 4px 0}
+.tbx b{color:var(--ink)}
 .tleg{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--muted);margin-top:8px}
 .tleg i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:4px;vertical-align:2px}
 /* ── 알림 ── */
@@ -560,7 +569,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795276475';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795277072';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -799,6 +808,19 @@ function pickLine(d) {
 const TS = { 1: ['정체', '#e5484d'], 2: ['지체', '#f07a32'], 3: ['서행', '#e9b10c'], 4: ['원활', '#30a46c'], 6: ['사고', '#8e4ec6'], 0: ['정보 없음', '#9aa3b2'] };
 const tsOf = s => TS[s] || TS[0];
 const tleg = () => `<div class="tleg">${[4, 3, 2, 1].map(k => `<span><i style="background:${TS[k][1]}"></i>${TS[k][0]}</span>`).join('')}</div>`;
+// 길 전체를 한 줄 막대로: 출발(왼쪽) → 도착(오른쪽), 구간 길이만큼 막힘 색. 가장 긴 막힘 위에는 도로 이름
+function trafficBar(d) {
+  const P = d.path || [], tot = P.reduce((a, x) => a + x.d, 0); if (!P.length || !tot) return '';
+  const nm = PLACE_NAME[d.route] || ['출발', '도착'], j = jamsOf(d)[0];
+  let at = 0, jx = null, best = 0;
+  P.forEach(x => { if (j && x.n === j.n && (x.s === 1 || x.s === 2) && x.d > best) { best = x.d; jx = (at + x.d / 2) / tot * 100; } at += x.d; });
+  if (jx != null) jx = Math.min(88, Math.max(12, jx));
+  return `<div class="tbar" role="img" aria-label="길 전체 막힘 정도"><span class="pt a"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="3"/></svg></span>
+    <div class="tr">${P.map(x => `<i style="flex:${x.d};background:${tsOf(x.s)[1]}"></i>`).join('')}</div>
+    <span class="pt b"><svg viewBox="0 0 10 10"><path d="M5 0l5 10H0z"/></svg></span>
+    ${jx != null ? `<span class="jm" style="left:${jx.toFixed(1)}%;color:${tsOf(j.s)[1]}">${esc(j.n)} ${tsOf(j.s)[0]}</span>` : ''}</div>
+    <div class="tbx"><b>${nm[0]}</b><span class="num">${d.dist.toFixed(1)}km</span><b>${nm[1]}</b></div>`;
+}
 const mapBox = h => `<div class="map" data-map data-h="${h}" data-noswipe style="height:${h}px"></div>`;
 // 막히는 곳: 같은 도로의 정체·지체 구간을 모아 길이순
 function jamsOf(d) {
@@ -870,7 +892,7 @@ function nowA(d) {
     <p class="pick" id="pick">${pickLine(d)}</p>`;
   const barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
   // 사용자가 고른 B안: 길 지도(막힘 색)를 맨 위에, 그 아래 걸리는 시간·출발 시각별 막대
-  return `<div class="card" style="padding:8px">${mapBox(230)}${tleg()}${jamLine(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
+  return `<div class="card" style="padding:8px">${mapBox(230)}${trafficBar(d)}${tleg()}${jamLine(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
 }
 /* ── 알림 탭 ── */
 const ALERTS = [
