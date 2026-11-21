@@ -53,7 +53,7 @@ function handle_(b) {
     // 점검(GitHub Actions): 키·주소 값은 돌려주지 않고 있는지 여부만
     if (b.action === 'health') {
       const pl = json_('PLACES', {});
-      return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), jsKeyLike: P.getKeys().filter(k => /KAKAO|JS/i.test(k)), tg: !!P.getProperty('TG_TOKEN'),
+      return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), tg: !!P.getProperty('TG_TOKEN'),
         chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick') } };
     }
     const key = P.getProperty('APP_KEY');
@@ -113,7 +113,8 @@ function save_(b) {
 function places_(input) {
   const key = kakaoKey_(), found = {}, pl = {};
   ['work', 'home', 'dorm'].forEach(k => {
-    const q = String(input[k] || '').trim(); if (q.length < 2) throw new Error('세 곳을 모두 넣어 주세요');
+    const q = String(input[k] || '').trim(); if (!q) throw new Error('세 곳을 모두 넣어 주세요');
+    if (q.length < 2) throw new Error('주소나 건물 이름으로 넣어 주세요 (두 글자 이상)');
     const h = { headers: { Authorization: 'KakaoAK ' + key }, muteHttpExceptions: true };
     let r = UrlFetchApp.fetch('https://dapi.kakao.com/v2/local/search/address.json?query=' + encodeURIComponent(q), h), d = r.getResponseCode() === 200 ? JSON.parse(r.getContentText()).documents : null;
     if (r.getResponseCode() !== 200) throw new Error(kakaoErr_(r, '주소 찾기'));
