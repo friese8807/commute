@@ -195,6 +195,22 @@ html{background:var(--solid)}
 .pick{margin-top:8px;text-align:center;font-size:13.5px;min-height:20px}
 .legend{display:flex;justify-content:center;gap:12px;font-size:11.5px;color:var(--muted);margin-top:4px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+/* ── 길 지도 (실시간 막힘 색) ── */
+.map{position:relative;height:220px;border-radius:14px;overflow:hidden;background:var(--soft);margin-top:4px}
+.map.big{height:62vh}
+.map svg{display:block;width:100%;height:100%}
+.map .gr{stroke:var(--line);stroke-width:1}
+.map .cs{fill:none;stroke:var(--solid);stroke-linecap:round;stroke-linejoin:round}
+.map .rt{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.map .pin{stroke:var(--solid);stroke-width:3}
+.map .pl{font-size:11px;font-weight:800;fill:var(--ink);paint-order:stroke;stroke:var(--solid);stroke-width:3px}
+.map .jl{font-size:10.5px;font-weight:800;paint-order:stroke;stroke:var(--solid);stroke-width:3px}
+.map .ov{position:absolute;right:8px;top:8px;display:flex;gap:6px;z-index:5}
+.map .ov button{border:0;background:var(--solid);color:var(--ink);font:inherit;font-size:12px;font-weight:700;border-radius:10px;padding:6px 10px;box-shadow:0 1px 4px rgba(0,0,0,.18);min-height:32px}
+.map .ov button.on{background:var(--accent);color:var(--on-accent)}
+.map .why2{position:absolute;left:8px;bottom:6px;font-size:10.5px;color:var(--muted)}
+.tleg{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--muted);margin-top:8px}
+.tleg i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:4px;vertical-align:2px}
 /* ── 알림 ── */
 .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:0}
@@ -544,7 +560,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795271144';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795274823';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -637,11 +653,29 @@ function demoLoad({ route, from, step, hours }) {
   const now = NOW(), t0 = Math.max(now, from || 0), slots = [{ t: t0, min: demoMin(route, t0), live: !from || from <= now }];
   for (let t = Math.ceil((t0 + 6e4) / (step * 6e4)) * step * 6e4; t <= t0 + hours * 36e5; t += step * 6e4) slots.push({ t, min: demoMin(route, t) });
   const I = DEMO_INFO[route];
-  return { route, slots, dist: I.dist, toll: I.toll, roads: I.roads, at: now };
+  return { route, slots, dist: I.dist, toll: I.toll, roads: I.roads, path: demoPath(route, t0), at: now };
 }
+const DEMO_ROADS = [
+  ['양천로', [[126.8343, 37.5602], [126.8480, 37.5575], [126.8620, 37.5545]]],
+  ['서부간선도로', [[126.8620, 37.5545], [126.8705, 37.5420], [126.8750, 37.5300], [126.8800, 37.5170], [126.8820, 37.5050], [126.8850, 37.4920], [126.8870, 37.4800]]],
+  ['강남순환로', [[126.8870, 37.4800], [126.8950, 37.4650], [126.9200, 37.4680], [126.9500, 37.4700], [126.9750, 37.4735], [127.0000, 37.4720], [127.0200, 37.4690], [127.0400, 37.4650]]],
+  ['용인서울고속도로', [[127.0400, 37.4650], [127.0600, 37.4480], [127.0800, 37.4300], [127.0860, 37.4100], [127.0900, 37.3900], [127.0920, 37.3650], [127.0950, 37.3400], [127.1000, 37.3200], [127.1050, 37.3000]]],
+  ['중부대로', [[127.1050, 37.3000], [127.1100, 37.2880], [127.1158, 37.2755]]],
+];
+// 막힘 정도: 1 정체 · 2 지체 · 3 서행 · 4 원활 (카카오 길찾기 traffic_state 와 같은 번호)
+function demoPath(route, ms) {
+  const lv = Math.max(0, (demoMin(route, ms) - DEMO_INFO[route].base) / 60), W = [1.5, 1.9, 1.2, .9, 1.6, .5, .3, .8, 1.3, .6, .4, .7, .2];
+  const roads = route === 'w2h' ? DEMO_ROADS : DEMO_ROADS.slice().reverse().map(([n, p]) => [n, p.slice().reverse()]);
+  const out = []; let k = 0;
+  roads.forEach(([n, p]) => { for (let i = 0; i < p.length - 1; i++) { const v = lv * W[k++ % W.length], st = v > 1 ? 1 : v > .7 ? 2 : v > .45 ? 3 : 4;
+    const seg = [p[i], p[i + 1]], d = geoLen(seg), last = out.at(-1);
+    if (last && last.n === n && last.s === st) { last.p.push(p[i + 1]); last.d += d; } else out.push({ n, s: st, d, p: seg }); } });
+  return out;
+}
+function geoLen(p) { let m = 0; for (let i = 1; i < p.length; i++) { const [a, b] = p[i - 1], [c, e] = p[i], dx = (c - a) * 88800, dy = (e - b) * 111000; m += Math.hypot(dx, dy); } return Math.round(m); }
 const DEMO_CFG = {
   places: { work: '마곡역 (서울 강서구)', home: '기흥역 (용인 기흥구)', dorm: '마곡나루역 (서울 강서구)' },
-  step: 10, hours: 4, offDays: [], kakao: true, calls: 214,
+  step: 10, hours: 4, offDays: [], kakao: true, calls: 214, ev: true, jsKey: '',
   tg: { ok: true, bot: '@chulbal_helper_bot' },
   alerts: { w2h: { on: true, time: '17:00' }, h2w: { on: false, time: '06:30' }, h2d: { on: true, time: '19:00' } },
 };
@@ -744,7 +778,10 @@ function bestLine(d) {
   if (b.t === n.t || gain < 3) return `<div class="best same"><svg class="ak-ic" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg><span>${n.live === false ? '이 시각' : '지금'} 떠나는 게 가장 빨라요. 앞으로 ${Math.round((d.slots.at(-1).t - n.t) / 36e5)}시간 동안 더 빨라지지 않아요</span></div>`;
   return `<div class="best"><svg class="ak-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><b>${hm(b.t)} 출발</b>이 가장 빨라요 · <b>${gain}분</b> 덜 걸려요<br>${dur(b.min)} · 도착 ${hm(b.t + b.min * 6e4)}</span></div>`;
 }
-const facts = d => `<div class="facts"><div class="fact"><small>거리</small><b class="num">${d.dist.toFixed(1)}km</b></div><div class="fact"><small>통행료</small><b class="num">${d.toll ? AppKit.num(d.toll) + '원' : '없음'}</b></div><div class="fact"><small>주요 도로</small><b>${esc((d.roads || []).slice(0, 3).join(' · ') || '—')}</b></div></div>`;
+/* 전기차는 유료도로 통행료 50% 감면 (전기차로 등록된 하이패스 기준). 10원 단위로 */
+const isEv = () => (S.cfg && S.cfg.ev != null) ? !!S.cfg.ev : LS.get('ev', true);
+const tollTxt = t => !t ? '없음' : isEv() ? `${AppKit.num(Math.round(t * .5 / 10) * 10)}원</b><small style="margin:2px 0 0">전기차 50% · 원래 ${AppKit.num(t)}원</small><b hidden>` : AppKit.num(t) + '원';
+const facts = d => `<div class="facts"><div class="fact"><small>거리</small><b class="num">${d.dist.toFixed(1)}km</b></div><div class="fact"><small>통행료</small><b class="num">${tollTxt(d.toll)}</b></div><div class="fact"><small>주요 도로</small><b>${esc((d.roads || []).slice(0, 3).join(' · ') || '—')}</b></div></div>`;
 function hourTicks(d, pct) {
   const s = d.slots, t0 = s[0].t, tN = s.at(-1).t, out = [];
   for (let t = Math.ceil(t0 / 36e5) * 36e5; t <= tN; t += 36e5) { const p = pct(t); if (p > 4 && p < 96) out.push(`<span style="left:${p.toFixed(1)}%">${hm(t).slice(0, 2)}시</span>`); }
@@ -755,6 +792,67 @@ function pickLine(d) {
   const diff = x.min - d.slots[0].min;
   return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>`;
 }
+/* ── 길 지도: 카카오 지도(JS 키가 있으면) 위에 막힘 정도 색으로 길을 그린다. 없거나 못 불러오면 그림 지도로 ── */
+const TS = { 1: ['정체', '#e5484d'], 2: ['지체', '#f07a32'], 3: ['서행', '#e9b10c'], 4: ['원활', '#30a46c'], 6: ['사고', '#8e4ec6'], 0: ['정보 없음', '#9aa3b2'] };
+const tsOf = s => TS[s] || TS[0];
+const tleg = () => `<div class="tleg">${[4, 3, 2, 1].map(k => `<span><i style="background:${TS[k][1]}"></i>${TS[k][0]}</span>`).join('')}</div>`;
+const mapBox = h => `<div class="map" data-map data-h="${h}" data-noswipe style="height:${h}px"></div>`;
+// 막히는 곳: 같은 도로의 정체·지체 구간을 모아 길이순
+function jamsOf(d) {
+  const m = {}; (d.path || []).forEach(x => { if (x.s === 1 || x.s === 2) { const o = m[x.n || '이름 없는 길'] = m[x.n || '이름 없는 길'] || { n: x.n || '이름 없는 길', d: 0, s: 3 }; o.d += x.d; o.s = Math.min(o.s, x.s); } });
+  return Object.values(m).filter(x => x.d >= 300).sort((a, b) => b.d - a.d);
+}
+const jamLine = d => { const j = jamsOf(d); return j.length ? `<p class="jamline">막히는 곳 ${j.slice(0, 3).map(x => `<b style="color:${tsOf(x.s)[1]}">${esc(x.n)} ${(x.d / 1000).toFixed(1)}km</b>`).join(' · ')}</p>` : '<p class="jamline mut">지금은 막히는 곳 없이 잘 뚫려 있어요</p>'; };
+const PLACE_NAME = { w2h: ['회사', '집'], h2w: ['집', '회사'], h2d: ['집', '숙소'] };
+function svgMap(el, d) {
+  const P = (d.path || []).flatMap(x => x.p); if (P.length < 2) { el.innerHTML = '<div class="ak-empty">길 모양을 받지 못했어요</div>'; return; }
+  const W = el.clientWidth || 340, H = el.clientHeight || 220, pad = 26, k = Math.cos(37.4 * Math.PI / 180);
+  const xs = P.map(p => p[0] * k), ys = P.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const sc = Math.min((W - pad * 2) / Math.max(1e-6, x1 - x0), (H - pad * 2) / Math.max(1e-6, y1 - y0)), ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
+  const X = p => (ox + (p[0] * k - x0) * sc).toFixed(1), Y = p => (oy + (y1 - p[1]) * sc).toFixed(1), line = p => p.map((q, i) => (i ? 'L' : 'M') + X(q) + ',' + Y(q)).join('');
+  const grid = []; for (let g = 40; g < W; g += 40) grid.push(`<line x1="${g}" x2="${g}" y1="0" y2="${H}" class="gr"/>`); for (let g = 40; g < H; g += 40) grid.push(`<line y1="${g}" y2="${g}" x1="0" x2="${W}" class="gr"/>`);
+  const all = d.path.map(x => line(x.p)).join(''), a = P[0], b = P.at(-1), nm = PLACE_NAME[d.route] || ['출발', '도착'];
+  const j = jamsOf(d)[0], jp = j && d.path.filter(x => x.n === j.n && (x.s === 1 || x.s === 2)).sort((p, q) => q.d - p.d)[0], mid = jp && (jp.p.length > 2 ? jp.p[Math.floor(jp.p.length / 2)] : [(jp.p[0][0] + jp.p[1][0]) / 2, (jp.p[0][1] + jp.p[1][1]) / 2]);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
+    ${d.path.map(x => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="5"/>`).join('')}
+    <circle cx="${X(a)}" cy="${Y(a)}" r="7" class="pin" fill="var(--accent)"/><circle cx="${X(b)}" cy="${Y(b)}" r="7" class="pin" fill="var(--ink)"/>
+    <text x="${+X(a) + 11}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 11}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text>
+    ${mid ? `<text x="${+X(mid) + (+X(mid) + (j.n.length + 3) * 11 > W ? -10 : 10)}" y="${+Y(mid) + 4}" text-anchor="${+X(mid) + (j.n.length + 3) * 11 > W ? 'end' : 'start'}" class="jl" fill="${tsOf(j.s)[1]}">${esc(j.n)} ${tsOf(j.s)[0]}</text>` : ''}</svg>
+    <span class="why2">${S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
+}
+let kakaoP = null;
+function loadKakao(key) {
+  if (!key) return Promise.resolve(false);
+  if (kakaoP) return kakaoP;
+  return kakaoP = new Promise(ok => {
+    const t = setTimeout(() => ok(false), 8000), sc = document.createElement('script');
+    sc.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${encodeURIComponent(key)}&autoload=false`; sc.referrerPolicy = 'origin';
+    sc.onload = () => { try { kakao.maps.load(() => { clearTimeout(t); ok(true); }); } catch (e) { clearTimeout(t); ok(false); } };
+    sc.onerror = () => { clearTimeout(t); ok(false); }; document.head.append(sc);
+  });
+}
+function kakaoMap(el, d) {
+  const km = kakao.maps, P = (d.path || []).flatMap(x => x.p); el.innerHTML = '';
+  const map = new km.Map(el, { center: new km.LatLng(P[0][1], P[0][0]), level: 9 });
+  const bounds = new km.LatLngBounds(); P.forEach(p => bounds.extend(new km.LatLng(p[1], p[0])));
+  (d.path || []).forEach(x => new km.Polyline({ map, path: x.p.map(p => new km.LatLng(p[1], p[0])), strokeWeight: 6, strokeColor: tsOf(x.s)[1], strokeOpacity: .95 }));
+  const nm = PLACE_NAME[d.route] || ['출발', '도착'];
+  [[P[0], nm[0]], [P.at(-1), nm[1]]].forEach(([p, t]) => new km.CustomOverlay({ map, position: new km.LatLng(p[1], p[0]), yAnchor: 1.3,
+    content: `<div style="background:#0d2436;color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:8px">${t}</div>` }));
+  map.setBounds(bounds, 30, 30, 30, 30);
+  if (LS.get('traffic', true)) map.addOverlayMapTypeId(km.MapTypeId.TRAFFIC);
+  const ov = document.createElement('div'); ov.className = 'ov';
+  ov.innerHTML = `<button type="button" data-traffic class="${LS.get('traffic', true) ? 'on' : ''}">주변 교통</button><button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`;
+  el.append(ov); el._map = map;
+}
+// 화면을 그린 뒤 [data-map] 칸마다 지도를 채운다
+async function drawMaps() {
+  const els = [...document.querySelectorAll('[data-map]')], d = S.data; if (!els.length || !d?.path?.length) return;
+  const ok = await loadKakao(S.cfg?.jsKey);
+  els.forEach(el => { if (!el.isConnected) return; if (ok) { try { kakaoMap(el, d); return; } catch (e) {} } svgMap(el, d);
+    if (!ok) { const ov = document.createElement('div'); ov.className = 'ov'; ov.innerHTML = `<button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`; el.append(ov); } });
+}
+
 /* 큰 숫자 + 출발 시각별 막대 (사용자가 고른 A안) */
 function nowA(d) {
   const s = d.slots, n = s[0], b = bestOf(s), max = Math.max(...s.map(x => x.min)), min = Math.min(...s.map(x => x.min)), lo = Math.max(0, min - (max - min) * .9 - 5);
@@ -762,12 +860,14 @@ function nowA(d) {
   const bars = s.map((x, i) => `<button type="button" data-sel="${i}" class="${i === 0 ? 'now' : ''}${x === b && i ? ' best' : ''}${S.sel === i ? ' sel' : ''}" style="height:${((x.min - lo) / (max - lo) * 100).toFixed(1)}%" aria-label="${hm(x.t)} 출발 ${dur(x.min)}">${i === 0 ? '<em>지금</em>' : x === b ? `<em>${hm(x.t)}</em>` : ''}</button>`).join('');
   // 막대 칸은 같은 너비라 시각 눈금도 칸 순서로 맞춘다 (첫 칸만 '지금'이라 간격이 조금 짧다)
   const pct = t => { let k = s.findIndex(x => x.t >= t); if (k < 0) k = s.length - 1; return (k + .5) / s.length * 100; };
-  return `<div class="card hero"><div class="lb">${label0(d)}</div><div class="big num">${durBig(n.min)}</div>
-    <div class="arr num"><span>도착</span> ${hm(n.t + n.min * 6e4)}</div>${bestLine(d)}</div>
-    <div class="card"><h2>출발 시각별 걸리는 시간</h2><div class="bars" data-noswipe>${bars}</div><div class="bx">${hourTicks(d, pct)}</div>
+  const hero = `<div class="card hero"><div class="lb">${label0(d)}</div><div class="big num">${durBig(n.min)}</div>
+    <div class="arr num"><span>도착</span> ${hm(n.t + n.min * 6e4)}</div>${bestLine(d)}</div>`;
+  const barsIn = `<div class="bars" data-noswipe>${bars}</div><div class="bx">${hourTicks(d, pct)}</div>
     <div class="legend"><span><i style="background:var(--now)"></i>지금</span><span><i style="background:var(--best)"></i>가장 빠름</span><span><i style="background:var(--bar)"></i>그 밖</span></div>
-    <p class="pick" id="pick">${pickLine(d)}</p></div>
-    <div class="card">${facts(d)}</div>`;
+    <p class="pick" id="pick">${pickLine(d)}</p>`;
+  const barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
+  // 사용자가 고른 B안: 길 지도(막힘 색)를 맨 위에, 그 아래 걸리는 시간·출발 시각별 막대
+  return `<div class="card" style="padding:8px">${mapBox(230)}${tleg()}${jamLine(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
 }
 /* ── 알림 탭 ── */
 const ALERTS = [
@@ -809,6 +909,13 @@ function viewSet() {
     <button class="btn" type="button" data-act="places">장소 저장</button>
     ${S.found ? `<p class="note" style="margin-bottom:0">찾은 곳 — 회사: ${esc(S.found.work)} · 집: ${esc(S.found.home)} · 숙소: ${esc(S.found.dorm)}</p>` : ''}
     <p class="note" style="margin-bottom:0">주소는 내 구글 계정의 서버에만 보관해요. 이 휴대폰과 공개 저장소에는 남지 않아요.</p></div>`;
+  const car = `<div class="card"><h2>내 차</h2><div class="seg"><button type="button" data-ev="1" class="${isEv() ? 'on' : ''}">전기차</button><button type="button" data-ev="0" class="${isEv() ? '' : 'on'}">일반</button></div>
+    <p class="note" style="margin-bottom:0">전기차는 유료도로 통행료를 50% 깎아서 보여 줘요(전기차로 등록된 하이패스 기준). 걸리는 시간은 같아요.</p></div>
+    <div class="card"><h2>카카오 지도 키 ${c.jsKey ? '<span class="badge">연결됨</span>' : '<span class="badge off">아직 없음</span>'}</h2>
+    <ol class="steps"><li>developers.kakao.com → 출발 도우미 앱 → <b>앱 키</b>에서 <b>JavaScript 키</b>를 복사해요.</li>
+      <li>같은 앱 → <b>플랫폼 → Web</b> → 사이트 도메인에 <code>https://friese8807.github.io</code> 를 넣어요.</li>
+      <li>서버 편집기 → 프로젝트 설정 → 스크립트 속성에 <code>KAKAO_JS_KEY</code> 로 넣어요.</li></ol>
+    <p class="note" style="margin-bottom:0">키가 없어도 길과 막히는 곳 색은 그림으로 보여 줘요.</p></div>`;
   const look = `<div class="card"><h2>출발 시각 살펴보기</h2><label class="fld"><span>간격</span></label>${segBtns('step', [10, 15, 20, 30], LS.get('step', c.step), '분')}
     <label class="fld"><span>앞으로</span></label>${segBtns('hours', [2, 3, 4], LS.get('hours', c.hours), '시간')}
     <p class="note" style="margin-bottom:0">간격이 좁고 길게 볼수록 카카오에 묻는 횟수가 늘어요. 같은 질문은 서버가 10분 동안 기억해요.</p></div>`;
@@ -823,7 +930,7 @@ function viewSet() {
       <li><b>카카오모빌리티 길찾기</b>(자동차 길찾기·미래 운행 정보) 사용 설정을 켜요. 화면 이름은 조금 다를 수 있어요.</li>
       <li>Apps Script 편집기 → 프로젝트 설정 → <b>스크립트 속성</b>에 이름 <code>KAKAO_REST_KEY</code>, 값에 복사한 키를 넣어요.</li></ol>
     <p class="note" style="margin-bottom:0">키는 서버에만 두고 이 화면에서는 쓰지 않아요.</p></div>`;
-  return (S.demo ? server : '') + places + look + days + kakao + (S.demo ? '' : server) + `<p class="diag">${AppKit.env(BUILD)}</p>`;
+  return (S.demo ? server : '') + places + car + look + days + kakao + (S.demo ? '' : server) + `<p class="diag">${AppKit.env(BUILD)}</p>`;
 }
 
 /* ── 탭 ── */
@@ -832,6 +939,7 @@ const tabs = AppKit.tabs({
   render(id) {
     const sc = document.getElementById('sc');
     sc.innerHTML = id === 'now' ? viewNow() : id === 'alarm' ? viewAlarm() : viewSet();
+    if (id === 'now') requestAnimationFrame(drawMaps);
   },
 });
 
@@ -844,6 +952,11 @@ document.addEventListener('click', async e => {
   if ((b = q('[data-base]'))) { S.base = b.dataset.base; S.sel = null; tabs.redraw(); return refresh(); }
   if ((b = q('[data-sel]'))) { S.sel = +b.dataset.sel; document.querySelectorAll('.bars button').forEach((x, i) => x.classList.toggle('sel', i === S.sel)); document.getElementById('pick').innerHTML = pickLine(S.data); return; }
   if ((b = q('[data-act="retry"]'))) return refresh();
+  if ((b = q('[data-bigmap]'))) { const m = b.closest('[data-map]'); m.classList.toggle('big'); m.style.height = m.classList.contains('big') ? '62vh' : m.dataset.h + 'px'; drawMaps(); if (m.classList.contains('big')) m.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+  if ((b = q('[data-traffic]'))) { const on = !LS.get('traffic', true); LS.set('traffic', on); b.classList.toggle('on', on); const m = b.closest('[data-map]')._map;
+    if (m) on ? m.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC) : m.removeOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC); AppKit.toast(on ? '주변 도로 교통도 보여 줘요' : '내 길만 보여 줘요'); return; }
+  if ((b = q('[data-ev]'))) { const v = b.dataset.ev === '1'; LS.set('ev', v); if (S.cfg) S.cfg.ev = v; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    AppKit.toast(v ? '전기차 통행료(50% 할인)로 보여 줄게요' : '일반 통행료로 보여 줄게요'); api('save', { ev: v }).catch(er => AppKit.toast(er.message)); return; }
   if ((b = q('[data-seg]'))) {
     const k = b.dataset.seg, v = +b.dataset.v; LS.set(k, v); if (S.cfg) S.cfg[k] = v;
     b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));

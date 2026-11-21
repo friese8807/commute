@@ -26,7 +26,7 @@ const HOL = {
   '2027-09-14': '추석 연휴', '2027-09-15': '추석', '2027-09-16': '추석 연휴', '2027-10-03': '개천절', '2027-10-04': '대체공휴일',
   '2027-10-09': '한글날', '2027-10-11': '대체공휴일', '2027-12-25': '성탄절', '2027-12-27': '대체공휴일',
 };
-const DEF_CFG = { step: 10, hours: 4, offDays: [],
+const DEF_CFG = { step: 10, hours: 4, offDays: [], ev: true,
   alerts: { w2h: { on: true, time: '17:00' }, h2w: { on: false, time: '06:30' }, h2d: { on: true, time: '19:00' } } };
 
 /* ── 요청 받기 ── */
@@ -88,7 +88,8 @@ function config_() {
     tg = { ok: !!bot, bot: bot };
   }
   return { places: { work: (pl.work || {}).q || '', home: (pl.home || {}).q || '', dorm: (pl.dorm || {}).q || '' },
-    step: c.step, hours: c.hours, offDays: c.offDays, alerts: c.alerts,
+    step: c.step, hours: c.hours, offDays: c.offDays, alerts: c.alerts, ev: c.ev !== false,
+    jsKey: (P.getProperty('KAKAO_JS_KEY') || '').trim(),   // 지도용 JavaScript 키(도메인 제한 키라 화면에 줘도 된다). REST 키는 주지 않는다
     kakao: !!P.getProperty('KAKAO_REST_KEY'), calls: calls[0] === day_() ? +calls[1] : 0, tg: tg };
 }
 // 바뀐 칸만 받는다. 잘못된 값은 받지 않는다
@@ -96,6 +97,7 @@ function save_(b) {
   const c = cfg_();
   if (b.step != null) { if ([10, 15, 20, 30].indexOf(+b.step) < 0) throw new Error('간격은 10·15·20·30분만 돼요'); c.step = +b.step; }
   if (b.hours != null) { if ([2, 3, 4].indexOf(+b.hours) < 0) throw new Error('2·3·4시간만 돼요'); c.hours = +b.hours; }
+  if (b.ev != null) c.ev = !!b.ev;
   if (b.offDays) c.offDays = b.offDays.filter(k => /^\d{4}-\d\d-\d\d$/.test(k)).slice(0, 60);
   if (b.alerts) Object.keys(b.alerts).forEach(k => {
     if (!ROUTES[k]) return; const a = b.alerts[k] || {};
@@ -145,12 +147,12 @@ function load_(b) {
   if (!first) throw new Error('카카오 길찾기 결과를 받지 못했어요. 잠시 후 다시 해주세요');
   const slots = rs.map((r, i) => r && { t: ts[i], min: Math.round(r.sec / 60) }).filter(Boolean);
   slots[0].live = live;
-  return { route: route, slots: slots, dist: Math.round(first.dist / 100) / 10, toll: first.toll, roads: first.roads || [], at: now };
+  return { route: route, slots: slots, dist: Math.round(first.dist / 100) / 10, toll: first.toll, roads: first.roads || [], path: first.path || [], ev: c.ev !== false, at: now };
 }
 // 여러 출발 시각을 한꺼번에(fetchAll) 묻는다. 받은 값은 지금=3분, 미래=10분 기억한다
 function directions_(route, o, d, list) {
   const key = kakaoKey_(), cache = CacheService.getScriptCache(), ver = P.getProperty('PVER') || '0';
-  const ck = it => ['nv', ver, route, it.live ? 'now' + Math.floor(it.t / 18e4) : kst_(it.t, 'yyyyMMddHHmm'), it.full ? 'f' : 's'].join('|');
+  const ck = it => ['nv2', ver, route, it.live ? 'now' + Math.floor(it.t / 18e4) : kst_(it.t, 'yyyyMMddHHmm'), it.full ? 'f' : 's'].join('|');
   const hit = cache.getAll(list.map(ck)), res = list.map(it => hit[ck(it)] ? JSON.parse(hit[ck(it)]) : null);
   const need = list.map((it, i) => res[i] ? -1 : i).filter(i => i >= 0);
   if (need.length) {
@@ -170,12 +172,29 @@ function directions_(route, o, d, list) {
       const j = JSON.parse(r.getContentText()), rt = (j.routes || [])[0];
       if (!rt || rt.result_code !== 0) { if (i === 0) throw new Error('카카오 길찾기: ' + ((rt && rt.result_msg) || '길을 찾지 못했어요')); return; }
       const s = rt.summary, v = { sec: s.duration, dist: s.distance, toll: (s.fare || {}).toll || 0 };
-      if (list[i].full) v.roads = mainRoads_(rt.sections || []);
+      if (list[i].full) { v.roads = mainRoads_(rt.sections || []); v.path = path_(rt.sections || []); }
       res[i] = v; put[ck(list[i])] = JSON.stringify(v);
     });
     if (Object.keys(put).length) cache.putAll(put, list[0].live ? 180 : 600);
   }
   return res;
+}
+// 지도에 그릴 길: 도로마다 막힘 정도(traffic_state 1 정체·2 지체·3 서행·4 원활·0 모름)와 좌표.
+// 같은 이름·같은 막힘이 이어지면 합치고, 40m 안쪽 점은 건너뛰어 크기를 줄인다(서버 기억 한 칸 100KB 제한)
+function path_(sections) {
+  const out = [];
+  sections.forEach(sec => (sec.roads || []).forEach(r => {
+    const v = r.vertexes || [], pts = [];
+    for (let i = 0; i + 1 < v.length; i += 2) pts.push([Math.round(v[i] * 1e5) / 1e5, Math.round(v[i + 1] * 1e5) / 1e5]);
+    if (pts.length < 2) return;
+    const st = [1, 2, 3, 4, 6].indexOf(r.traffic_state) >= 0 ? r.traffic_state : 0, last = out[out.length - 1];
+    if (last && last.n === (r.name || '') && last.s === st) { last.p = last.p.concat(pts.slice(1)); last.d += r.distance || 0; }
+    else out.push({ n: r.name || '', s: st, d: r.distance || 0, p: pts });
+  }));
+  out.forEach(x => { const k = [x.p[0]];
+    for (let i = 1; i < x.p.length - 1; i++) { const a = k[k.length - 1], b = x.p[i]; if (Math.abs(b[0] - a[0]) * 88800 + Math.abs(b[1] - a[1]) * 111000 > 40) k.push(b); }
+    k.push(x.p[x.p.length - 1]); x.p = k; });
+  return out;
 }
 // 지나는 길 중 이름 있는 도로를 거리순으로 3개
 function mainRoads_(sections) {
