@@ -53,7 +53,7 @@ function handle_(b) {
     // 점검(GitHub Actions): 키·주소 값은 돌려주지 않고 있는지 여부만
     if (b.action === 'health') {
       const pl = json_('PLACES', {});
-      return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), tg: !!P.getProperty('TG_TOKEN'),
+      return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), jsKeyLike: P.getKeys().filter(k => /KAKAO|JS/i.test(k)), tg: !!P.getProperty('TG_TOKEN'),
         chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick') } };
     }
     const key = P.getProperty('APP_KEY');
