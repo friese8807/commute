@@ -881,13 +881,10 @@ function hourTicks(d, pct) {
   for (let t = Math.ceil(t0 / 36e5) * 36e5; t <= tN; t += 36e5) { const p = pct(t); if (p > 10 && p < 96) out.push(`<span style="left:${p.toFixed(1)}%">${hm(t).slice(0, 2)}시</span>`); }
   return out.join('');
 }
-// 다른 길: 출발 시각들 대부분이 쓰는 길(거리 가운데값)과 8% 넘게 다르면
-const mainKm = d => { const k = d.slots.map(x => x.km).filter(Boolean).sort((a, b) => a - b); return k.length ? k[Math.floor(k.length / 2)] : 0; };
-const isAlt = (d, x) => { const m = mainKm(d); return !!(x.km && m && Math.abs(x.km - m) / m > .08); };
 function pickLine(d) {
   const x = S.sel != null && d.slots[S.sel]; if (!x) return '';
   const diff = x.min - d.slots[0].min;
-  return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>${CH_V === 'B' && x.km ? `<br><span class="mut">${(x.g || 0) === 0 ? '지금 길' : '다른 길'} ${x.km}km</span>` : ''}`;
+  return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>${x.km && routeGroups(d).length > 1 ? `<br><span class="mut">${(x.g || 0) === 0 ? '지금 길' : '다른 길'} ${x.km}km</span>` : ''}`;
 }
 /* ── 길 지도: 카카오 지도(JS 키가 있으면) 위에 막힘 정도 색으로 길을 그린다. 없거나 못 불러오면 그림 지도로 ── */
 const TS = { 1: ['정체', '#e5484d'], 2: ['지체', '#f07a32'], 3: ['서행', '#e9b10c'], 4: ['원활', '#30a46c'], 6: ['사고', '#8e4ec6'], 0: ['정보 없음', '#9aa3b2'] };
@@ -1005,8 +1002,7 @@ async function drawMaps() {
     if (!ok) el.nextElementSibling.innerHTML = focusBtn() + `<button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`; });
 }
 
-// 출발 시각별 차트 모양 (시안 A 단순 막대 · B 길별 색 · C 30분 시간표)
-const CH_V = 'A';
+// 출발 시각별: 길별 색 막대(B) + 그 아래 30분 시간표(C) — 사용자가 둘 다 고름
 const RCOL = ['#a9cbe8', '#c3b3ee', '#f3c49b'];
 // 거리가 8% 안쪽이면 같은 길로 묶는다 (지금 길이 첫 묶음)
 function routeGroups(d) {
@@ -1021,7 +1017,7 @@ function nowA(d) {
   const yp = v => ((v - lo) / (hi - lo) * 100).toFixed(1), ticks = []; for (let v = lo; v <= hi; v += st) ticks.push(v);
   const iMx = s.findIndex(x => x.min === max), iMn = s.findIndex(x => x.min === min), N = s.length;
   const tag = (i, cls, txt) => `<em class="${cls}${i < 3 ? ' l' : i > N - 4 ? ' r' : ''}">${txt}</em>`;
-  const RG = routeGroups(d), byRoute = CH_V === 'B' && RG.length > 1;
+  const RG = routeGroups(d), byRoute = RG.length > 1;
   const bars = s.map((x, i) => `<button type="button" data-sel="${i}" class="${byRoute ? '' : (i === 0 ? 'now' : '') + (x === b && i ? ' best' : '')}${S.sel === i ? ' sel' : ''}" style="height:${yp(x.min)}%${byRoute ? ';background:' + RCOL[Math.min(2, x.g || 0)] : ''}" aria-label="${hm(x.t)} 출발 ${dur(x.min)}">${i === iMx ? tag(i, 'mx', dur(x.min)) : i === iMn ? tag(i, 'mn', dur(x.min)) : ''}</button>`).join('');
   const chart = `<div class="bch" data-noswipe><div class="ya">${ticks.map(v => `<span style="top:${100 - yp(v)}%">${v}분</span>`).join('')}</div>
     <div class="pl">${ticks.map(v => `<i class="gl" style="top:${100 - yp(v)}%"></i>`).join('')}<div class="bars">${bars}</div></div></div>`;
@@ -1034,10 +1030,10 @@ function nowA(d) {
       : `<div class="legend"><span><i style="background:var(--now)"></i>지금</span><span><i style="background:var(--best)"></i>가장 빠름</span><span><i style="background:var(--bar)"></i>그 밖</span></div>`}
     <p class="pick" id="pick">${pickLine(d)}</p>`;
   let barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
-  if (CH_V === 'C') {
+  {
     // 30분마다 한 줄 + 지금 + 가장 빠른 시각
     const rows = s.filter((x, i) => i === 0 || x === b || new Date(x.t + 9 * 36e5).getUTCMinutes() % 30 === 0);
-    barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2><ul class="tt2">${rows.map(x => { const df = x.min - n.min;
+    barsCard += `<div class="card"><h2>30분마다 언제 떠나면</h2><ul class="tt2">${rows.map(x => { const df = x.min - n.min;
       return `<li class="${x === n ? 'now' : ''}${x === b ? ' best' : ''}"><span class="t num">${x === n && n.live !== false ? '지금' : hm(x.t)}</span><b class="num">${dur(x.min)}</b>
         <span class="r num">${hm(x.t + x.min * 6e4)} 도착</span><em>${x === b ? '가장 빠름' : x === n ? '' : df > 0 ? '+' + df + '분' : df < 0 ? '−' + (-df) + '분' : '같음'}</em></li>`; }).join('')}</ul></div>`;
   }
