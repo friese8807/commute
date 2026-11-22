@@ -135,20 +135,29 @@ function places_(input) {
 
 /* ── 길 시간 받기 ── */
 function load_(b) {
-  const route = ROUTES[b.route] ? b.route : nextTrip_(Date.now()).r, R = ROUTES[route], c = cfg_();
+  const c = cfg_(), pl = json_('PLACES', {});
   const step = [10, 15, 20, 30].indexOf(+b.step) >= 0 ? +b.step : c.step, hours = [2, 3, 4].indexOf(+b.hours) >= 0 ? +b.hours : c.hours;
-  const pl = json_('PLACES', {}), o = pl[R.from], d = pl[R.to];
+  let route, o, d, ckey, to;
+  if (b.route === 'here') {
+    // 지금 위치 → 고른 장소. 위치는 이번 길찾기에만 쓰고 저장하지 않는다 (서버 기억 키는 약 100m 단위로 뭉갠 값)
+    const x = +(b.origin || {}).x, y = +(b.origin || {}).y;
+    if (!(x > 124 && x < 132 && y > 33 && y < 39)) throw new Error('지금 위치를 알 수 없어요. 위치 권한을 확인해 주세요');
+    route = 'here'; to = ['home', 'work', 'dorm'].indexOf(b.to) >= 0 ? b.to : 'home';
+    o = { x: x.toFixed(6), y: y.toFixed(6) }; d = pl[to]; ckey = 'here' + to + x.toFixed(3) + ',' + y.toFixed(3);
+  } else {
+    route = ROUTES[b.route] ? b.route : nextTrip_(Date.now()).r; o = pl[ROUTES[route].from]; d = pl[ROUTES[route].to]; ckey = route;
+  }
   if (!o || !d) throw new Error('먼저 설정에서 회사·집·숙소 장소를 저장해 주세요');
   const now = Date.now(), from = +b.from || 0, t0 = Math.max(now, from), live = !from || from <= now;
   // 첫 칸은 지금(실시간 길찾기) 또는 고른 시각, 나머지는 간격에 맞춘 시각 — 시각이 고정돼야 서버 기억(캐시)을 다시 쓸 수 있다
   const ts = [t0];
   for (let t = Math.ceil((t0 + 6e4) / (step * 6e4)) * step * 6e4; t <= t0 + hours * 36e5 && ts.length < 26; t += step * 6e4) ts.push(t);
-  const rs = directions_(route, o, d, ts.map((t, i) => ({ t: t, live: i === 0 && live, full: i === 0 })));
+  const rs = directions_(ckey, o, d, ts.map((t, i) => ({ t: t, live: i === 0 && live, full: i === 0 })));
   const first = rs[0];
   if (!first) throw new Error('카카오 길찾기 결과를 받지 못했어요. 잠시 후 다시 해주세요');
   const slots = rs.map((r, i) => r && { t: ts[i], min: Math.round(r.sec / 60) }).filter(Boolean);
   slots[0].live = live;
-  return { route: route, slots: slots, dist: Math.round(first.dist / 100) / 10, toll: first.toll, roads: first.roads || [], path: first.path || [], ev: c.ev !== false, at: now };
+  return { route: route, to: to, slots: slots, dist: Math.round(first.dist / 100) / 10, toll: first.toll, roads: first.roads || [], path: first.path || [], ev: c.ev !== false, at: now };
 }
 // 여러 출발 시각을 한꺼번에(fetchAll) 묻는다. 받은 값은 지금=3분, 미래=10분 기억한다
 function directions_(route, o, d, list) {
