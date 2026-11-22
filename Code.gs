@@ -53,10 +53,8 @@ function handle_(b) {
     // 점검(GitHub Actions): 키·주소 값은 돌려주지 않고 있는지 여부만
     if (b.action === 'health') {
       const pl = json_('PLACES', {});
-      // 서울 열린데이터광장(8088 포트)에 구글 서버가 닿는지 (응답 코드만)
-      let seoul = 'x'; try { const r = UrlFetchApp.fetch('http://openapi.seoul.go.kr:8088/sample/xml/AccMainCode/1/30/', { muteHttpExceptions: true }); seoul = r.getResponseCode() + ' ' + r.getContentText().replace(/\s+/g, ' ').replace(/<\/?(row|RESULT|CODE|MESSAGE)>/g, ' ').slice(0, 1500); } catch (e) { seoul = '못 닿음: ' + plain_(e).slice(0, 60); }
       return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), ex: !!P.getProperty('EX_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), ex: !!P.getProperty('EX_KEY'), tg: !!P.getProperty('TG_TOKEN'),
-        chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick'), seoul: seoul } };
+        chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick'), seoul: !!P.getProperty('SEOUL_KEY') } };
     }
     const key = P.getProperty('APP_KEY');
     if (!key) return { ok: false, code: 'setup', message: '서버 준비가 아직이에요. 편집기에서 setup() 을 한 번 실행해 주세요' };
@@ -93,7 +91,7 @@ function config_() {
   return { places: { work: (pl.work || {}).q || '', home: (pl.home || {}).q || '', dorm: (pl.dorm || {}).q || '' },
     step: c.step, hours: c.hours, offDays: c.offDays, alerts: c.alerts, ev: c.ev !== false,
     jsKey: (P.getProperty('KAKAO_JS_KEY') || '').trim(),   // 지도용 JavaScript 키(도메인 제한 키라 화면에 줘도 된다). REST 키는 주지 않는다
-    kakao: !!P.getProperty('KAKAO_REST_KEY'), calls: calls[0] === day_() ? +calls[1] : 0, tg: tg };
+    seoul: !!P.getProperty('SEOUL_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), calls: calls[0] === day_() ? +calls[1] : 0, tg: tg };
 }
 // 바뀐 칸만 받는다. 잘못된 값은 받지 않는다
 function save_(b) {
@@ -312,10 +310,51 @@ function exInfo_() {
     });
     if (L.length < 200) break;
   }
-  const res = { items: out, at: Date.now(), test: !P.getProperty('EX_KEY') };
+  let seoulErr = '';
+  try { seoulInfo_().forEach(x => out.push(x)); } catch (e) { seoulErr = plain_(e); }   // 서울시 자료가 안 돼도 고속도로 자료는 보이게
+  const res = { items: out, at: Date.now(), test: !P.getProperty('EX_KEY'), seoul: !!P.getProperty('SEOUL_KEY'), seoulErr: seoulErr };
   try { cache.put('ex1', JSON.stringify(res), 180); } catch (e) {}
   return res;
 }
+/* ── 서울시 실시간 돌발 정보 (서울 열린데이터광장 AccInfo, 올림픽대로·서부간선도로 같은 도시고속도로·일반도로 사고·공사)
+   키는 스크립트 속성 SEOUL_KEY. XML 로만 준다(JSON 은 오류). 좌표는 GRS80 TM 중부원점 → 위경도로 바꾼다. 종류 이름은 AccMainCode 로 받아 하루 기억 */
+const SEOUL_ROADS = ['올림픽대로', '강변북로', '서부간선도로', '동부간선도로', '내부순환로', '북부간선도로', '강남순환로', '경부고속도로', '분당수서로', '양재대로', '남부순환로', '노들로', '공항대로', '양천로', '가양대교', '성산대교', '한강대교', '반포대교', '영동대교', '청담대교', '봉은교', '탄천'];
+function seoulInfo_() {
+  const key = (P.getProperty('SEOUL_KEY') || '').trim(); if (!key) return [];
+  const cache = CacheService.getScriptCache(), get = path => {
+    const r = UrlFetchApp.fetch('http://openapi.seoul.go.kr:8088/' + encodeURIComponent(key) + '/xml/' + path, { muteHttpExceptions: true });
+    const root = XmlService.parse(r.getContentText()).getRootElement(), code = root.getChild('RESULT') && root.getChild('RESULT').getChildText('CODE');
+    if (code && code !== 'INFO-000') { if (code === 'INFO-200') return []; throw new Error('서울시 자료: ' + (root.getChild('RESULT').getChildText('MESSAGE') || code)); }
+    return root.getChildren('row').map(e => Object.fromEntries(e.getChildren().map(c => [c.getName(), c.getText()])));
+  };
+  let names = cache.get('seoulCodes');
+  // 칸 이름을 몰라도 되게 (코드, 이름) 순서로 읽는다
+  if (!names) { const m = {}; get('AccMainCode/1/100/').forEach(r => { const v = Object.values(r); m[v[0]] = v[1]; }); names = JSON.stringify(m); cache.put('seoulCodes', names, 21600); }
+  names = JSON.parse(names);
+  return get('AccInfo/1/1000/').map(r => {
+    const nm = names[r.acc_type] || '돌발', info = String(r.acc_info || '').replace(/\r/g, '\n').trim(), first = info.split('\n')[0];
+    const ll = (+r.grs80tm_x && +r.grs80tm_y) ? tm2ll_(+r.grs80tm_x, +r.grs80tm_y) : [null, null];
+    const g = /사고|고장|낙하|화재/.test(nm) ? 'acc' : /공사|작업/.test(nm) ? 'work' : /기상|강우|강설|결빙|안개|침수/.test(nm) ? 'wx' : /정체/.test(nm) ? 'jam' : 'etc';
+    const road = SEOUL_ROADS.find(n => info.indexOf(n) >= 0) || '서울시 도로';
+    const d8 = v => String(v || ''), hm = v => d8(v).padStart(4, '0').slice(0, 2) + ':' + d8(v).padStart(4, '0').slice(2, 4);
+    return { k: nm, c: 'S' + r.acc_type, g: g, src: '서울시', road: road, dir: '', at: first.length > 40 ? '' : first, text: first.length > 40 ? info : info.split('\n').slice(1).join(' ').trim(),
+      len: 0, time: d8(r.occr_date).slice(4, 6) + '.' + d8(r.occr_date).slice(6, 8) + ' ' + hm(r.occr_time),
+      until: d8(r.exp_clr_date) ? d8(r.exp_clr_date).slice(0, 4) + '.' + d8(r.exp_clr_date).slice(4, 6) + '.' + d8(r.exp_clr_date).slice(6, 8) : '',
+      lanes: [0, 0, 0, 0, 0, 0], sh: 0, lon: ll[0], lat: ll[1] };
+  });
+}
+// 서울시 돌발 정보 좌표(GRS80 TM 중부원점, EPSG:5181: 원점 38N·127E, 가산 200000/500000) → 위경도
+function tm2ll_(x, y) {
+  const a = 6378137, f = 1 / 298.257222101, e2 = f * (2 - f), ep2 = e2 / (1 - e2), k0 = 1, lat0 = 38 * Math.PI / 180, lon0 = 127 * Math.PI / 180;
+  const Mf = p => a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256) * p - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 ** 3 / 1024) * Math.sin(2 * p) + (15 * e2 * e2 / 256 + 45 * e2 ** 3 / 1024) * Math.sin(4 * p) - (35 * e2 ** 3 / 3072) * Math.sin(6 * p));
+  const mu = (Mf(lat0) + (y - 500000) / k0) / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256)), e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const p1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu) + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+  const s = Math.sin(p1), c = Math.cos(p1), t = Math.tan(p1), C1 = ep2 * c * c, T1 = t * t, N1 = a / Math.sqrt(1 - e2 * s * s), R1 = a * (1 - e2) / Math.pow(1 - e2 * s * s, 1.5), D = (x - 200000) / (N1 * k0);
+  const lat = p1 - (N1 * t / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24 + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
+  const lon = lon0 + (D - (1 + 2 * T1 + C1) * D ** 3 / 6 + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / c;
+  return [Math.round(lon * 180 / Math.PI * 1e6) / 1e6, Math.round(lat * 180 / Math.PI * 1e6) / 1e6];
+}
+
 function widget_() {
   const t = nextTrip_(Date.now()), d = load_({ route: t.r, step: 30, hours: 3 }), n = d.slots[0];
   const mn = Math.min.apply(null, d.slots.map(x => x.min)), b = d.slots.filter(x => x.min === mn)[0];
