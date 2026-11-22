@@ -230,6 +230,18 @@ html{background:var(--solid)}
 .tbx b{color:var(--ink)}
 .tleg{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 12px;font-size:11.5px;color:var(--muted);margin-top:8px}
 .tleg i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:4px;vertical-align:2px}
+.jb{display:flex;align-items:center;gap:10px;margin:10px 4px 4px;border-radius:14px;padding:12px 14px;font-size:14.5px;line-height:1.4;word-break:keep-all}
+.jb .ak-ic{flex:none;width:24px;height:24px}
+.jb.ok{background:var(--p-go);color:var(--p-go-ink)}
+.jb.list{display:block;background:var(--soft);border:1px solid var(--line);padding:12px 12px 8px}
+.jb .jh{display:flex;align-items:center;gap:8px;margin:0 2px 6px;color:var(--top-ink)}.jb .jh b{flex:1;font-size:15.5px}.jb .jh small{font-weight:700;color:var(--muted)}
+.jb .jr{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:4px 8px;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:inherit;padding:9px 4px;border-radius:10px;cursor:pointer}
+.jb .jr.on{background:var(--solid);box-shadow:0 0 0 2px var(--accent)}
+.jb .jn{font-weight:700;min-width:0}
+.jb .jr em{font-style:normal;font-size:11.5px;font-weight:800;border-radius:6px;padding:2px 8px}
+.jb .jbar{grid-column:1/-1;display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--line)}
+.jb .jbar i{display:block;height:100%;min-width:2px}
+.jb .jt{grid-column:1/-1;font-size:11.5px;color:var(--muted)}
 /* ── 알림 ── */
 .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:0}
@@ -579,7 +591,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795308210';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795308887';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -831,7 +843,7 @@ function hourTicks(d, pct) {
   return out.join('');
 }
 function pickLine(d) {
-  const x = S.sel != null && d.slots[S.sel]; if (!x) return '<span class="mut">막대를 누르면 그 시각에 떠날 때를 보여 줘요</span>';
+  const x = S.sel != null && d.slots[S.sel]; if (!x) return '';
   const diff = x.min - d.slots[0].min;
   return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>`;
 }
@@ -858,7 +870,17 @@ function jamsOf(d) {
   const m = {}; (d.path || []).forEach(x => { if (x.s === 1 || x.s === 2) { const o = m[x.n || '이름 없는 길'] = m[x.n || '이름 없는 길'] || { n: x.n || '이름 없는 길', d: 0, s: 3 }; o.d += x.d; o.s = Math.min(o.s, x.s); } });
   return Object.values(m).filter(x => x.d >= 300).sort((a, b) => b.d - a.d);
 }
-const jamLine = d => { const j = jamsOf(d); return j.length ? `<p class="jamline">막히는 곳 ${j.slice(0, 3).map(x => `<b style="color:${tsOf(x.s)[1]}">${esc(x.n)} ${(x.d / 1000).toFixed(1)}km</b>`).join(' · ')}</p>` : '<p class="jamline mut">지금은 막히는 곳 없이 잘 뚫려 있어요</p>'; };
+// 막히는 곳 상자 (사용자가 고른 A안을 파스텔로). 꼬리표만 정체=빨강·지체=노랑. 줄을 누르면 지도가 그 도로만 보여 준다
+const warnI = '<svg class="ak-ic" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>', okI = '<svg class="ak-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
+const PILL = { 1: ['정체', '#e5484d', '#fff'], 2: ['지체', '#f5c443', '#3d2c00'] };
+function jamBox(d) {
+  const j = jamsOf(d), km = m => (m / 1000).toFixed(1) + 'km';
+  if (!j.length) return `<div class="jb ok">${okI}<b>막히는 곳 없이 잘 뚫려 있어요</b></div>`;
+  return `<div class="jb list"><div class="jh">${warnI}<b>막히는 곳 ${j.length}곳</b><small>총 ${km(j.reduce((a, x) => a + x.d, 0))}</small></div>
+    ${j.slice(0, 4).map(x => { const segs = d.path.filter(y => (y.n || '이름 없는 길') === x.n), all = segs.reduce((a, y) => a + y.d, 0), pl = PILL[x.s] || PILL[2];
+      return `<button type="button" class="jr${S.focus === x.n ? ' on' : ''}" data-focus="${esc(x.n)}"><span class="jn">${esc(x.n)}</span><b class="num">${km(x.d)}</b><em style="background:${pl[1]};color:${pl[2]}">${pl[0]}</em>
+        <span class="jbar" aria-hidden="true">${segs.map(y => `<i style="flex:${y.d};background:${tsOf(y.s)[1]}"></i>`).join('')}</span><small class="jt">도로 ${km(all)} 중 ${km(x.d)} 막힘 · 눌러서 지도에서 보기</small></button>`; }).join('')}</div>`;
+}
 const PLACE_NAME = { w2h: ['회사', '집'], h2w: ['집', '회사'], h2d: ['집', '숙소'] };
 const placeNames = d => d.route === 'here' ? ['내 위치', DESTN[d.to] || '집'] : PLACE_NAME[d.route] || ['출발', '도착'];
 // 장소 아이콘 (사용자가 고른 B안: 흰 원 + 색 테두리). 막힘 색(초록·노랑·주황·빨강)과 겹치지 않는 파랑·보라·분홍
@@ -870,19 +892,21 @@ function pinSvg(name, cx, cy, r) {
   return `<circle cx="${cx}" cy="${cy}" r="${r}" style="fill:var(--solid)" stroke="${c}" stroke-width="3"/><svg x="${cx - w / 2}" y="${cy - w / 2}" width="${w}" height="${w}" viewBox="0 0 24 24"><path d="${path}" fill="none" stroke="${c}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 const pinHtml = (name, px) => `<svg width="${px}" height="${px}" viewBox="${-px / 2} ${-px / 2} ${px} ${px}" style="display:block;overflow:visible" aria-label="${name}">${pinSvg(name, 0, 0, px / 2 - 2)}</svg>`;
+// 지도 초점: 막히는 곳 줄을 누르면 그 도로 구간으로 범위를 좁힌다
+const focusPts = d => S.focus ? d.path.filter(y => (y.n || '이름 없는 길') === S.focus).flatMap(y => y.p) : [];
 function svgMap(el, d) {
   const P = (d.path || []).flatMap(x => x.p); if (P.length < 2) { el.innerHTML = '<div class="ak-empty">길 모양을 받지 못했어요</div>'; return; }
-  const W = el.clientWidth || 340, H = el.clientHeight || 220, pad = 26, k = Math.cos(37.4 * Math.PI / 180);
-  const xs = P.map(p => p[0] * k), ys = P.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const W = el.clientWidth || 340, H = el.clientHeight || 220, pad = 26, k = Math.cos(37.4 * Math.PI / 180), F = focusPts(d), B = F.length > 1 ? F : P;
+  const xs = B.map(p => p[0] * k), ys = B.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const sc = Math.min((W - pad * 2) / Math.max(1e-6, x1 - x0), (H - pad * 2) / Math.max(1e-6, y1 - y0)), ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
   const X = p => (ox + (p[0] * k - x0) * sc).toFixed(1), Y = p => (oy + (y1 - p[1]) * sc).toFixed(1), line = p => p.map((q, i) => (i ? 'L' : 'M') + X(q) + ',' + Y(q)).join('');
   const grid = []; for (let g = 40; g < W; g += 40) grid.push(`<line x1="${g}" x2="${g}" y1="0" y2="${H}" class="gr"/>`); for (let g = 40; g < H; g += 40) grid.push(`<line y1="${g}" y2="${g}" x1="0" x2="${W}" class="gr"/>`);
   const all = d.path.map(x => line(x.p)).join(''), a = P[0], b = P.at(-1), nm = placeNames(d);
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
-    ${d.path.map(x => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="5"/>`).join('')}
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳" style="overflow:hidden">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
+    ${d.path.map(x => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="${F.length && (x.n || '이름 없는 길') === S.focus ? 9 : 5}"/>`).join('')}
     ${pinSvg(nm[0], +X(a), +Y(a), 12)}${pinSvg(nm[1], +X(b), +Y(b), 12)}
     <text x="${+X(a) + 17}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 17}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text></svg>
-    <span class="why2">${S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
+    <span class="why2">${F.length ? `<b style="color:var(--ink)">${esc(S.focus)}</b> 구간을 보는 중` : S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
 }
 let kakaoP = null;
 function loadKakao(key) {
@@ -899,22 +923,23 @@ function kakaoMap(el, d) {
   const km = kakao.maps, P = (d.path || []).flatMap(x => x.p); el.innerHTML = '';
   const map = new km.Map(el, { center: new km.LatLng(P[0][1], P[0][0]), level: 9 });
   const bounds = new km.LatLngBounds(); P.forEach(p => bounds.extend(new km.LatLng(p[1], p[0])));
-  (d.path || []).forEach(x => new km.Polyline({ map, path: x.p.map(p => new km.LatLng(p[1], p[0])), strokeWeight: 6, strokeColor: tsOf(x.s)[1], strokeOpacity: .95 }));
+  (d.path || []).forEach(x => new km.Polyline({ map, path: x.p.map(p => new km.LatLng(p[1], p[0])), strokeWeight: S.focus && (x.n || '이름 없는 길') === S.focus ? 10 : 6, strokeColor: tsOf(x.s)[1], strokeOpacity: .95 }));
   const nm = placeNames(d);
   [[P[0], nm[0]], [P.at(-1), nm[1]]].forEach(([p, t]) => new km.CustomOverlay({ map, position: new km.LatLng(p[1], p[0]), yAnchor: .5, xAnchor: .5,
     content: `<div style="display:flex;align-items:center;gap:3px">${pinHtml(t, 28)}<b style="background:#0d2436;color:#fff;font-size:12px;padding:2px 7px;border-radius:8px">${t}</b></div>` }));
-  map.setBounds(bounds, 30, 30, 30, 30);
+  const F = focusPts(d); if (F.length > 1) { const fb = new km.LatLngBounds(); F.forEach(p => fb.extend(new km.LatLng(p[1], p[0]))); map.setBounds(fb, 40, 40, 40, 40); } else map.setBounds(bounds, 30, 30, 30, 30);
   if (LS.get('traffic', true)) map.addOverlayMapTypeId(km.MapTypeId.TRAFFIC);
   const ov = document.createElement('div'); ov.className = 'ov';
-  ov.innerHTML = `<button type="button" data-traffic class="${LS.get('traffic', true) ? 'on' : ''}">주변 교통</button><button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`;
+  ov.innerHTML = focusBtn() + `<button type="button" data-traffic class="${LS.get('traffic', true) ? 'on' : ''}">주변 교통</button><button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`;
   el.append(ov); el._map = map;
 }
+const focusBtn = () => S.focus ? '<button type="button" data-focus="">전체 보기</button>' : '';
 // 화면을 그린 뒤 [data-map] 칸마다 지도를 채운다
 async function drawMaps() {
   const els = [...document.querySelectorAll('[data-map]')], d = S.data; if (!els.length || !d?.path?.length) return;
   const ok = await loadKakao(S.cfg?.jsKey);
   els.forEach(el => { if (!el.isConnected) return; if (ok) { try { kakaoMap(el, d); return; } catch (e) {} } svgMap(el, d);
-    if (!ok) { const ov = document.createElement('div'); ov.className = 'ov'; ov.innerHTML = `<button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`; el.append(ov); } });
+    if (!ok) { const ov = document.createElement('div'); ov.className = 'ov'; ov.innerHTML = focusBtn() + `<button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`; el.append(ov); } });
 }
 
 /* 큰 숫자 + 출발 시각별 막대 (사용자가 고른 A안) */
@@ -934,11 +959,10 @@ function nowA(d) {
     <div class="arr num"><span>도착</span> ${hm(n.t + n.min * 6e4)}</div>${bestLine(d)}</div>`;
   const barsIn = `${chart}<div class="bx"><span style="left:0;transform:none">${n.live === false ? hm(n.t) : '지금'}</span>${hourTicks(d, pct)}</div>
     <div class="legend"><span><i style="background:var(--now)"></i>지금</span><span><i style="background:var(--best)"></i>가장 빠름</span><span><i style="background:var(--bar)"></i>그 밖</span></div>
-    <p class="note" style="margin:4px 0 0">세로는 걸리는 시간(분), 가로는 출발 시각이에요</p>
     <p class="pick" id="pick">${pickLine(d)}</p>`;
   const barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
   // 사용자가 고른 B안: 길 지도(막힘 색)를 맨 위에, 그 아래 걸리는 시간·출발 시각별 막대
-  return `<div class="card" style="padding:8px">${mapBox(230)}${trafficBar(d)}${tleg()}${jamLine(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
+  return `<div class="card" style="padding:8px">${mapBox(230)}${trafficBar(d)}${tleg()}${jamBox(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
 }
 /* ── 알림 탭 ── */
 const ALERTS = [
@@ -1021,12 +1045,15 @@ document.addEventListener('click', async e => {
   const q = s => e.target.closest(s);
   let b;
   if (q('#refresh')) return refresh();
-  if ((b = q('[data-route]'))) { e.preventDefault(); S.route = b.dataset.route === 'auto' ? null : b.dataset.route; S.sel = null; S.base = 'now'; tabs.redraw(); return refresh(); }
+  if ((b = q('[data-route]'))) { e.preventDefault(); S.route = b.dataset.route === 'auto' ? null : b.dataset.route; S.sel = null; S.focus = null; S.base = 'now'; tabs.redraw(); return refresh(); }
   if ((b = q('[data-dest]'))) { S.dest = b.dataset.dest; S.sel = null; S.sig = null; tabs.redraw(); return refresh(); }
   if ((b = q('[data-base]'))) { S.base = b.dataset.base; S.sel = null; tabs.redraw(); return refresh(); }
   if ((b = q('[data-sel]'))) { S.sel = +b.dataset.sel; document.querySelectorAll('.bars button').forEach((x, i) => x.classList.toggle('sel', i === S.sel)); document.getElementById('pick').innerHTML = pickLine(S.data); return; }
   if ((b = q('[data-act="retry"]'))) return refresh();
   if ((b = q('[data-act="cfg"]'))) { S.cfgErr = null; tabs.redraw(); return loadCfg(); }
+  if ((b = q('[data-focus]'))) { const f = b.dataset.focus; S.focus = f && S.focus !== f ? f : null;
+    document.querySelectorAll('.jb .jr').forEach(x => x.classList.toggle('on', x.dataset.focus === S.focus)); await drawMaps();
+    document.querySelector('[data-map]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
   if ((b = q('[data-bigmap]'))) { const m = b.closest('[data-map]'); m.classList.toggle('big'); m.style.height = m.classList.contains('big') ? '62vh' : m.dataset.h + 'px'; drawMaps(); if (m.classList.contains('big')) m.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if ((b = q('[data-traffic]'))) { const on = !LS.get('traffic', true); LS.set('traffic', on); b.classList.toggle('on', on); const m = b.closest('[data-map]')._map;
     if (m) on ? m.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC) : m.removeOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC); AppKit.toast(on ? '주변 도로 교통도 보여 줘요' : '내 길만 보여 줘요'); return; }
