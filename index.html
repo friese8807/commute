@@ -591,7 +591,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795309162';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795309220';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -870,9 +870,9 @@ function jamsOf(d) {
   const m = {}; (d.path || []).forEach(x => { if (x.s === 1 || x.s === 2) { const o = m[x.n || '이름 없는 길'] = m[x.n || '이름 없는 길'] || { n: x.n || '이름 없는 길', d: 0, s: 3 }; o.d += x.d; o.s = Math.min(o.s, x.s); } });
   return Object.values(m).filter(x => x.d >= 300);   // 객체에 넣은 순서 = 길을 따라 처음 만난 순서
 }
-// 막히는 곳 상자 (사용자가 고른 A안을 파스텔로). 꼬리표만 정체=빨강·지체=노랑. 줄을 누르면 지도가 그 도로만 보여 준다
+// 막히는 곳 상자 (사용자가 고른 A안을 파스텔로). 꼬리표만 정체=빨강·지체=주황(지도와 같은 색). 줄을 누르면 지도가 그 도로만 보여 준다
 const warnI = '<svg class="ak-ic" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>', okI = '<svg class="ak-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
-const PILL = { 1: ['정체', '#e5484d', '#fff'], 2: ['지체', '#f5c443', '#3d2c00'] };
+const PILL = { 1: ['정체', TS[1][1], '#fff'], 2: ['지체', TS[2][1], '#fff'] };   // 지도·막대와 같은 색 (노랑은 '서행' 색이라 지체는 주황)
 function jamBox(d) {
   const j = jamsOf(d), km = m => (m / 1000).toFixed(1) + 'km';
   if (!j.length) return `<div class="jb ok">${okI}<b>막히는 곳 없이 잘 뚫려 있어요</b></div>`;
