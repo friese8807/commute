@@ -232,7 +232,7 @@ html{background:var(--solid)}
 .pop .px{position:absolute;right:-6px;top:-8px;border:0;background:none;color:var(--muted);font-size:22px;width:36px;height:36px;cursor:pointer}
 .pop .pt1{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-right:28px}.pop .pt1 b{font-size:15px}
 .pop .pt2{font-size:12.5px;color:var(--muted);margin-top:3px}.pop p{margin:6px 0 0}.pop .pt3{font-size:11.5px;color:var(--muted);margin-top:6px}
-.popa{position:absolute;z-index:6;width:250px;transform:translate(-50%,-100%);background:var(--solid);border-radius:14px;padding:12px 14px;box-shadow:0 6px 22px rgba(0,0,0,.28)}
+.popa{position:absolute;z-index:6;width:250px;max-height:150px;overflow-y:auto;overscroll-behavior:contain;transform:translate(-50%,-100%);background:var(--solid);border-radius:14px;padding:12px 14px;box-shadow:0 6px 22px rgba(0,0,0,.28)}
 .popa::after{content:"";position:absolute;left:50%;bottom:-7px;margin-left:-7px;border:7px solid transparent;border-top-color:var(--solid);border-bottom:0}
 .popa.dn{transform:translate(-50%,0)}.popa.dn::after{bottom:auto;top:-7px;border-top:0;border-bottom:7px solid var(--solid)}
 .popa.k{position:relative;transform:none}
