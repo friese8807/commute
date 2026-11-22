@@ -53,7 +53,7 @@ function handle_(b) {
     // 점검(GitHub Actions): 키·주소 값은 돌려주지 않고 있는지 여부만
     if (b.action === 'health') {
       const pl = json_('PLACES', {});
-      return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), tg: !!P.getProperty('TG_TOKEN'),
+      return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), ex: !!P.getProperty('EX_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), tg: !!P.getProperty('TG_TOKEN'),
         chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick') } };
     }
     const key = P.getProperty('APP_KEY');
@@ -66,6 +66,7 @@ function handle_(b) {
     if (a === 'places') return { ok: true, data: places_(b.places || {}) };
     if (a === 'test') return { ok: true, data: test_() };
     if (a === 'widget') return { ok: true, data: widget_() };
+    if (a === 'ex') return { ok: true, data: exInfo_() };
     return { ok: false, message: '모르는 요청이에요' };
   } catch (e) {
     return { ok: false, message: plain_(e) };
@@ -283,6 +284,30 @@ function test_() {
   const c = cfg_(), text = alertText_(load_({ route: nextTrip_(Date.now()).r, step: c.step, hours: c.hours }));
   const ok = tg_(text);
   return ok ? { sent: ['텔레그램'], text: text } : { sent: [], reason: '봇 대화방에서 시작을 눌렀는지 확인해 주세요' };
+}
+/* ── 한국도로공사 고속도로 실시간 문자 안내 (사고·고장·작업·정체·날씨). 키는 스크립트 속성 EX_KEY (data.ex.co.kr 에서 바로 발급)
+   없으면 포털의 시험용 키(test)로 받는다. 좌표는 latitude(위도)·altitude(경도) 칸에 온다. 3분 기억 */
+function exInfo_() {
+  const cache = CacheService.getScriptCache(), hit = cache.get('ex1'); if (hit) return JSON.parse(hit);
+  const key = (P.getProperty('EX_KEY') || 'test').trim(), out = [];
+  for (let page = 1; page <= 3; page++) {
+    const r = UrlFetchApp.fetch('https://data.ex.co.kr/openapi/burstInfo/realTimeSms?type=json&numOfRows=200&pageNo=' + page + '&key=' + encodeURIComponent(key), { muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) throw new Error('한국도로공사 자료를 받지 못했어요(' + r.getResponseCode() + ')');
+    const j = JSON.parse(r.getContentText()), L = j.realTimeSMSList || [];
+    if (j.code && !L.length) throw new Error('한국도로공사 키를 확인해 주세요 (' + (j.message || j.code) + ')');
+    L.forEach(x => {
+      if (x.accTypeCode === '15') return;   // 이벤트/홍보 문구는 뺀다
+      const lat = parseFloat(x.latitude), lon = parseFloat(x.altitude);
+      out.push({ k: x.accType || '', c: x.accTypeCode || '', road: x.roadNM || '', dir: x.startEndTypeCode || '', at: String(x.accPointNM || '').trim(),
+        text: String(x.smsText || '').trim(), len: parseFloat(x.lateLength) || 0, time: (x.accDate || '') + ' ' + (x.accHour || ''),
+        lanes: [1, 2, 3, 4, 5, 6].map(n => x['laneYn' + n] === 'Y' ? 1 : 0), sh: x.shldroadYn === 'Y' ? 1 : 0,
+        lat: lat > 33 && lat < 39 ? lat : null, lon: lon > 124 && lon < 132 ? lon : null });
+    });
+    if (L.length < 200) break;
+  }
+  const res = { items: out, at: Date.now(), test: !P.getProperty('EX_KEY') };
+  try { cache.put('ex1', JSON.stringify(res), 180); } catch (e) {}
+  return res;
 }
 function widget_() {
   const t = nextTrip_(Date.now()), d = load_({ route: t.r, step: 30, hours: 3 }), n = d.slots[0];
