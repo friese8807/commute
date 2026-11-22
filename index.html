@@ -245,6 +245,21 @@ html{background:var(--solid)}
 .jb .jbar{grid-column:1/-1;display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--line)}
 .jb .jbar i{display:block;height:100%;min-width:2px}
 .jb .jt{grid-column:1/-1;font-size:11.5px;color:var(--muted)}
+.jb.inc{margin-top:8px}
+.xp{font-style:normal;font-size:11.5px;font-weight:800;border-radius:6px;padding:2px 8px;white-space:nowrap}
+.hwf{flex-wrap:wrap;margin:10px 0 12px}
+.hwc{padding:6px 14px}
+.hwc .hh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0 6px}
+.hwc .hh b{font-size:15.5px;display:flex;align-items:center;gap:6px}.hwc .hh .dot{width:10px;height:10px;border-radius:50%}
+.hwc .hh span i{font-style:normal;font-size:11px;font-weight:800;border-radius:6px;padding:2px 6px;margin-left:4px}
+.hr{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.hwc .hh+.hr,.hwc>.hr:first-child{border-top:0}
+.hr .xp{margin-top:2px}
+.hb{min-width:0;word-break:keep-all;overflow-wrap:break-word}.hb b{font-size:14.5px}.hb small{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.hb p{margin:4px 0 0;font-size:13.5px;line-height:1.45}
+.ht{font-size:12px;color:var(--muted);padding-top:3px}
+.ln{display:flex;gap:2px;margin-top:6px}.ln i{font-style:normal;font-size:10px;font-weight:700;width:20px;height:16px;line-height:16px;text-align:center;border-radius:4px;background:var(--soft);color:var(--muted)}
+.ln i.x{background:#e5484d;color:#fff}
 /* ── 알림 ── */
 .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:0}
@@ -286,6 +301,7 @@ html{background:var(--solid)}
 <main id="sc"></main>
 <nav class="ak-tabs" aria-label="메뉴">
   <button type="button" data-tab="now"><span class="i"><svg class="ak-ic" viewBox="0 0 24 24"><path d="M5 17h14l-1.5-6.2A2 2 0 0 0 15.6 9H8.4a2 2 0 0 0-1.9 1.8z"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/><path d="M4 13h16"/></svg></span>지금</button>
+  <button type="button" data-tab="hw"><span class="i"><svg class="ak-ic" viewBox="0 0 24 24"><path d="M8 3L4 21M16 3l4 18M12 4v3M12 10v3M12 16v4"/></svg></span>고속도로</button>
   <button type="button" data-tab="alarm"><span class="i"><svg class="ak-ic" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span>알림</button>
   <button type="button" data-tab="set"><span class="i"><svg class="ak-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span>설정</button>
 </nav>
@@ -594,7 +610,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795310764';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795311206';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -711,6 +727,8 @@ function demoPath(route, ms) {
   return out;
 }
 function geoLen(p) { let m = 0; for (let i = 1; i < p.length; i++) { const [a, b] = p[i - 1], [c, e] = p[i], dx = (c - a) * 88800, dy = (e - b) * 111000; m += Math.hypot(dx, dy); } return Math.round(m); }
+// 예시: 한국도로공사 실시간 문자 안내 실제 응답(2026-11) + 예시 길 위 사고·공사 2건
+const DEMO_EX = [{"k":"사고","c":"00","road":"용인서울선","dir":"용인방향","at":"서판교IC부근","text":"(2차로) 승용차 추돌사고 처리중","len":0,"time":"17:32","lanes":[0,1,0,0,0,0],"lat":37.3905,"lon":127.0899},{"k":"작업","c":"03","road":"용인서울선","dir":"용인방향","at":"광교상현IC부근","text":"(갓길) 방음벽 보수 작업중","len":0,"time":"09:10","lanes":[0,0,0,0,0,0],"lat":37.3401,"lon":127.095},{"k":"작업","c":"03","road":"화성광주선","dir":"동탄방향","at":"동탄방향 26.0","text":"K (2차로) 비탈면보수 작업중","len":0,"time":"14:38","lanes":[0,0,1,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"신월여의지하도로","dir":"여의도방향","at":"E방향 5.4KM","text":"(여의방향) 교통시설물 복구공사","len":0,"time":"22:46","lanes":[1,1,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"광주원주선","dir":"원주방향","at":"/","text":"동양평(38K)-지정3터널(47K)(2차로)차단작업중","len":0,"time":"14:03","lanes":[0,1,0,0,0,0],"lat":null,"lon":null},{"k":"강우","c":"06","road":"광주원주선","dir":"광주방향","at":"/","text":"광주(분)(0K)-남한강대교(20K)\"빗길\"주의","len":0,"time":"15:30","lanes":[0,0,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"세종포천선","dir":"세종방향","at":"갈매동구릉TG","text":"세종방향>갈매동구릉 요금소  하이패스1,2차로 개량공사 장기차단 09.30~","len":0,"time":"14:17","lanes":[1,1,0,0,0,0],"lat":37.627269,"lon":127.120787},{"k":"작업","c":"03","road":"세종포천선","dir":"포천방향","at":"민락IC(북측)","text":"포천방향>민락 요금소  하이패스1,2차로 개량공사 장기차단 09.30~","len":0,"time":"14:36","lanes":[1,1,0,0,0,0],"lat":37.742025,"lon":127.119838},{"k":"작업","c":"03","road":"광주원주선","dir":"광주방향","at":"/","text":"양동터널(37K)부근(2차로) 차단작업중","len":0,"time":"21:45","lanes":[0,1,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"광주원주선","dir":"원주방향","at":"/","text":"/곤지암3터널(7K)(1갓길) 차단작업중 주의","len":0,"time":"09:13","lanes":[0,0,0,0,0,0],"lat":null,"lon":null},{"k":"안개","c":"09","road":"광주원주선","dir":"광주방향","at":"/","text":"/대신(22K)-남한강대교(18K) \"안개\"주의","len":0,"time":"04:42","lanes":[0,0,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"인천공항선","dir":"공항방향","at":"[공항] 30.8Km - 29.2Km","text":"(3차로)강재 도장","len":0,"time":"13:23","lanes":[0,0,1,0,0,0],"lat":37.471544,"lon":126.485724},{"k":"작업","c":"03","road":"광주원주선","dir":"원주방향","at":"/","text":"동곤지암(6K)-원주(분)(54K)(1차로) 이동작업중 주의","len":0,"time":"14:05","lanes":[1,0,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"광주원주선","dir":"광주방향","at":"/","text":"/양평휴게소(35K)부근(갓길) 작업중","len":0,"time":"13:42","lanes":[0,0,0,0,0,0],"lat":null,"lon":null},{"k":"강설","c":"07","road":"인천공항선","dir":"공항방향","at":"[전구간]","text":"\"눈길\"주의(제설대책기간)","len":0,"time":"00:00","lanes":[0,0,0,0,0,0],"lat":37.569859,"lon":126.670011},{"k":"작업","c":"03","road":"경인선","dir":"서울방향","at":"인천요금소(16K)","text":"(6차로) 시설물 설치 작업중~11월23일(월)","len":0,"time":"08:57","lanes":[0,0,0,0,0,1],"lat":37.523953,"lon":126.742937},{"k":"강우","c":"06","road":"광주원주선","dir":"광주방향","at":"/","text":"동여주(32K)-광주(분)(0K) \"빗길\"주의","len":0,"time":"17:50","lanes":[0,0,0,0,0,0],"lat":null,"lon":null},{"k":"사고","c":"00","road":"신월여의지하도로","dir":"신월방향","at":"S방향 4.23KM","text":"인천방향 4.23k 2차로 2중추돌사고","len":0,"time":"20:22","lanes":[0,1,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"수도권제1순환선","dir":"판교-일산방향","at":"학의분기점(119.6K)-학의분기점(118.5K)","text":"(갓길)작업장 안전간판 설치 작업중","len":0,"time":"05:02","lanes":[0,0,0,0,0,0],"lat":37.388453,"lon":127.005762},{"k":"작업","c":"03","road":"수도권제1순환선","dir":"판교-일산방향","at":"학의분기점부근(118K)-평촌(116K)","text":"(1,2차로)교량이음부 보수 작업중","len":0,"time":"05:16","lanes":[1,1,0,0,0,0],"lat":37.383508,"lon":126.988845},{"k":"차량증가/정체","c":"04","road":"남해선(순천-부산)","dir":"순천방향","at":"창원2터널부근(127K)-창원1터널(동측)(124K)","text":"","len":3.0,"time":"07:31","lanes":[0,0,0,0,0,0],"lat":35.279036,"lon":128.626849},{"k":"작업","c":"03","road":"평택시흥선","dir":"시흥방향","at":"마도분기점부근(20.2K)-남안산분기점부근(27.8K)","text":"(2차로)이동 차선도색 작업중","len":0,"time":"08:51","lanes":[0,1,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"평택시흥선","dir":"평택방향","at":"군자분기점부근(38.2K)-조암(9.8K)","text":"(2차로)이동 차선도색 작업중","len":0,"time":"08:52","lanes":[0,1,0,0,0,0],"lat":null,"lon":null},{"k":"작업","c":"03","road":"수도권제1순환선","dir":"판교-일산방향","at":"김포요금소(76K)","text":"(12차로)시설물 설치 작업중","len":0,"time":"08:54","lanes":[0,0,0,0,0,1],"lat":37.593517,"lon":126.768595},{"k":"차량증가/정체","c":"04","road":"경부선","dir":"서울방향","at":"달래내부근(412K)-반포(420K)","text":"","len":8.0,"time":"09:01","lanes":[0,0,0,0,0,0],"lat":37.434554,"lon":127.065615},{"k":"차량증가/정체","c":"04","road":"수도권제1순환선","dir":"판교-구리방향","at":"서운분기점(84K)-송내(89K)","text":"","len":5.0,"time":"09:31","lanes":[0,0,0,0,0,0],"lat":37.526544,"lon":126.751987},{"k":"차량증가/정체","c":"04","road":"경부선","dir":"서울방향","at":"수원부근(390K)-수원(392K)","text":"","len":2.0,"time":"09:34","lanes":[0,0,0,0,0,0],"lat":37.246167,"lon":127.103918},{"k":"차량증가/정체","c":"04","road":"경인선","dir":"서울방향","at":"신월부근(22K)-신월(24K)","text":"","len":2.0,"time":"09:37","lanes":[0,0,0,0,0,0],"lat":37.521805,"lon":126.810496},{"k":"고장","c":"01","road":"중부내륙선","dir":"창원방향","at":"감곡부근(254K)","text":"(갓길) 소형화물차 고장 처리중","len":0,"time":"09:38","lanes":[0,0,0,0,0,0],"lat":37.144307,"lon":127.650032},{"k":"차량증가/정체","c":"04","road":"서해안선","dir":"서울방향","at":"일직분기점(336K)-금천부근(339K)","text":"","len":3.0,"time":"09:49","lanes":[0,0,0,0,0,0],"lat":37.42462,"lon":126.895059},{"k":"차량증가/정체","c":"04","road":"논산천안선","dir":"천안방향","at":"정안 휴게소 운궁교(253.0K)-정안IC 인풍교(260.0K)","text":"7km 정체","len":0,"time":"09:52","lanes":[0,0,0,0,0,0],"lat":null,"lon":null}];
 const DEMO_CFG = {
   places: { work: '마곡역 (서울 강서구)', home: '기흥역 (용인 기흥구)', dorm: '마곡나루역 (서울 강서구)' },
   step: 10, hours: 4, offDays: [], kakao: true, calls: 214, ev: true, jsKey: '',
@@ -726,6 +744,7 @@ let api = async (action, payload = {}) => {
     if (action === 'config') return JSON.parse(JSON.stringify({ ...DEMO_CFG, offDays: LS.get('offDays', []) }));
     if (action === 'save') { if (payload.offDays) LS.set('offDays', payload.offDays); return { ok: true }; }
     if (action === 'test') return { sent: ['텔레그램'], text: alertText('w2h', demoLoad({ route: 'w2h', step: 10, hours: 4 })) };
+    if (action === 'ex') return { items: DEMO_EX, at: Date.now(), test: true };
     if (action === 'places') return { found: Object.fromEntries(Object.entries(payload.places).map(([k, v]) => [k, v + ' (예시)'])) };
     return {};
   }
@@ -802,6 +821,10 @@ async function refresh(quiet) {
     S.err = e.message; if (!quiet) AppKit.toast(e.message);
     if (!S.data && tabs.current === 'now') tabs.redraw();
   }
+}
+async function loadEx() {
+  try { S.ex = await api('ex'); S.exErr = null; } catch (e) { S.exErr = e.message; }
+  if (!AppKit.editing() && (tabs.current === 'hw' || tabs.current === 'now') && !document.querySelector('.map.big')) tabs.redraw();
 }
 async function loadCfg() {
   try { S.cfg = await api('config'); S.cfgErr = null; if (tabs.current === 'now') drawMaps(); LS.set('offDays', S.cfg.offDays || []); if (tabs.current !== 'now' && !AppKit.editing()) tabs.redraw(); }
@@ -912,9 +935,9 @@ function pinSvg(name, cx, cy, r) {
 }
 const pinHtml = (name, px) => `<svg width="${px}" height="${px}" viewBox="${-px / 2} ${-px / 2} ${px} ${px}" style="display:block;overflow:visible" aria-label="${name}">${pinSvg(name, 0, 0, px / 2 - 2)}</svg>`;
 // 지도 초점: 막히는 곳 줄을 누르면 그 도로 구간으로 범위를 좁힌다
-const isFoc = (x, i) => !!S.focus && (S.focus.i != null ? i === S.focus.i : (x.n || '이름 없는 길') === S.focus.n);
-const focusPts = d => S.focus ? d.path.filter(isFoc).flatMap(y => y.p) : [];
-const focusName = d => S.focus ? (S.focus.n || d.path[S.focus.i]?.n || '고른') : '';
+const isFoc = (x, i) => !!S.focus && !S.focus.pt && (S.focus.i != null ? i === S.focus.i : (x.n || '이름 없는 길') === S.focus.n);
+const focusPts = d => S.focus?.pt ? [[S.focus.pt[0] - .012, S.focus.pt[1] - .008], [S.focus.pt[0] + .012, S.focus.pt[1] + .008]] : S.focus ? d.path.filter(isFoc).flatMap(y => y.p) : [];
+const focusName = d => S.focus ? (S.focus.name || S.focus.n || d.path[S.focus.i]?.n || '고른') : '';
 function svgMap(el, d) {
   const P = (d.path || []).flatMap(x => x.p); if (P.length < 2) { el.innerHTML = '<div class="ak-empty">길 모양을 받지 못했어요</div>'; return; }
   const W = el.clientWidth || 340, H = el.clientHeight || 220, pad = 26, k = Math.cos(37.4 * Math.PI / 180), F = focusPts(d), B = F.length > 1 ? F : P;
@@ -926,6 +949,7 @@ function svgMap(el, d) {
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳" style="overflow:hidden">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
     ${d.path.map((x, xi) => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="${F.length && isFoc(x, xi) ? 9 : 5}"/>`).join('')}
     ${pinSvg(nm[0], +X(a), +Y(a), 12)}${pinSvg(nm[1], +X(b), +Y(b), 12)}
+    ${incOf(d).map(x => `<g transform="translate(${X([x.lon, x.lat])} ${Y([x.lon, x.lat])})"><circle r="8" fill="${EXL[EXG(x.c)][1]}" stroke="#fff" stroke-width="2"/><text y="4" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">!</text></g>`).join('')}
     ${S.focus?.at ? `<g transform="translate(${+X(S.focus.at.p) - 22} ${+Y(S.focus.at.p) - 18})" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${carSvg(S.focus.at.left, 44)}</g>` : ''}
     <text x="${+X(a) + 17}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 17}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text></svg>
     <span class="why2">${F.length ? `<b style="color:var(--ink)">${esc(focusName(d))}</b> 구간을 보는 중` : S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
@@ -949,6 +973,8 @@ function kakaoMap(el, d) {
   const nm = placeNames(d);
   [[P[0], nm[0]], [P.at(-1), nm[1]]].forEach(([p, t]) => new km.CustomOverlay({ map, position: new km.LatLng(p[1], p[0]), yAnchor: .5, xAnchor: .5,
     content: `<div style="display:flex;align-items:center;gap:3px">${pinHtml(t, 28)}<b style="background:#0d2436;color:#fff;font-size:12px;padding:2px 7px;border-radius:8px">${t}</b></div>` }));
+  incOf(d).forEach(x => new km.CustomOverlay({ map, position: new km.LatLng(x.lat, x.lon), zIndex: 4,
+    content: `<div style="background:${EXL[EXG(x.c)][1]};color:#fff;font-size:11px;font-weight:800;padding:2px 7px;border-radius:9px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">! ${esc(exLabel(x))}</div>` }));
   if (S.focus?.at) new km.CustomOverlay({ map, position: new km.LatLng(S.focus.at.p[1], S.focus.at.p[0]), yAnchor: .85, zIndex: 5,
     content: `<div style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${carSvg(S.focus.at.left, 44)}</div>` });
   const F = focusPts(d); if (F.length > 1) { const fb = new km.LatLngBounds(); F.forEach(p => fb.extend(new km.LatLng(p[1], p[0]))); map.setBounds(fb, 40, 40, 40, 40); } else map.setBounds(bounds, 30, 30, 30, 30);
@@ -986,7 +1012,48 @@ function nowA(d) {
     <p class="pick" id="pick">${pickLine(d)}</p>`;
   const barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
   // 사용자가 고른 B안: 길 지도(막힘 색)를 맨 위에, 그 아래 걸리는 시간·출발 시각별 막대
-  return `<div class="card" style="padding:8px">${mapBox(230)}${trafficBar(d)}${tleg()}${jamBox(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
+  return `<div class="card" style="padding:8px">${mapBox(230)}${trafficBar(d)}${tleg()}${jamBox(d)}${incBox(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
+}
+/* ── 고속도로 실시간 상황 (한국도로공사 문자 안내) ── */
+const EXG = c => ['00', '01', '02', '16', '30', '31'].includes(c) ? 'acc' : ['03', '75'].includes(c) ? 'work' : c === '04' ? 'jam' : ['06', '09', '17', '18', '19', '20', '21'].includes(c) ? 'wx' : 'etc';
+const EXL = { acc: ['사고·고장', '#e5484d', '#fff'], work: ['공사', '#f07a32', '#fff'], jam: ['정체', '#e9b10c', '#3d2c00'], wx: ['날씨', '#4f93c9', '#fff'], etc: ['기타', '#8a94a3', '#fff'] };
+const exLabel = x => x.c === '03' ? '공사' : x.c === '04' ? '정체' : x.k || '기타';
+const exPill = x => { const g = EXL[EXG(x.c)]; return `<em class="xp" style="background:${g[1]};color:${g[2]}">${esc(exLabel(x))}</em>`; };
+const METRO = ['경부선', '수도권제1순환선', '수도권제2순환선', '용인서울선', '서해안선', '영동선', '중부선', '경인선', '제2경인선', '제3경인선', '평택시흥선', '광주원주선', '세종포천선', '인천공항선', '신월여의지하도로', '서울양양선', '화성광주선', '봉담동탄선', '평택파주선', '안양성남선'];
+// 길에서 tol 미터 안에 있는 사건인지 (좌표 없는 문자 안내는 빼고)
+function routeIdx(x, d, tol) {
+  if (x.lat == null || !d?.path?.length) return -1;
+  let best = -1, bd = tol, k = 0;
+  d.path.forEach(y => y.p.forEach(q => { const m = Math.hypot((q[0] - x.lon) * 88800, (q[1] - x.lat) * 111000); if (m < bd) { bd = m; best = k; } k++; }));
+  return best;
+}
+// 지금 길 위 사고·공사·날씨 (정체는 카카오 막힘 색으로 이미 보이므로 뺀다), 가는 순서대로
+const incOf = d => (S.ex?.items || []).map(x => ({ x, i: routeIdx(x, d, 400) })).filter(o => o.i >= 0 && EXG(o.x.c) !== 'jam').sort((a, b) => a.i - b.i).map(o => o.x);
+function incBox(d) {
+  const L = incOf(d); if (!L.length) return '';
+  return `<div class="jb list inc"><div class="jh">${warnI}<b>길 위 사고·공사 ${L.length}건</b><small>한국도로공사</small></div>
+    ${L.map((x, i) => `<button type="button" class="jr${S.focus?.inc === i ? ' on' : ''}" data-inc="${i}"><span class="jn">${esc(x.road)} ${esc(x.at || x.dir)}</span><span></span>${exPill(x)}
+      <small class="jt" style="color:var(--ink);font-size:13px">${esc(x.text)}</small><small class="jt">${esc(x.time)} · 눌러서 지도에서 보기</small></button>`).join('')}</div>`;
+}
+const lanesHtml = x => x.lanes?.some(Boolean) || x.sh ? `<span class="ln" aria-label="막힌 차로">${x.lanes.map((v, i) => `<i class="${v ? 'x' : ''}">${i + 1}</i>`).join('')}${x.sh ? '<i class="x">갓</i>' : ''}</span>` : '';
+const hwRow = x => `<div class="hr">${exPill(x)}<div class="hb"><b>${esc(x.road)} <span class="mut">${esc(x.dir)}</span></b>${x.at && x.at !== '/' ? `<small>${esc(x.at)}</small>` : ''}
+  ${x.text ? `<p>${esc(x.text)}</p>` : ''}${x.len ? `<p><b>${x.len}km</b> 정체</p>` : ''}${lanesHtml(x)}</div><span class="ht num">${esc((String(x.time).match(/(\d\d:\d\d)(:\d\d)?\s*$/) || [])[1] || '')}</span></div>`;
+function viewHw() {
+  if (!S.ex) return `<div class="card"><div class="ak-empty">${S.exErr ? esc(S.exErr) + '<br><button type="button" data-act="ex">다시 시도</button>' : '고속도로 상황을 받는 중이에요…'}</div></div>`;
+  const all = S.ex.items, hasRoute = !!S.data?.path?.length, f = S.hwF || (hasRoute ? 'route' : 'metro');
+  const inMetro = x => x.lat != null ? x.lat > 36.9 && x.lat < 38.1 && x.lon > 126.3 && x.lon < 127.9 : METRO.includes(x.road);
+  const F = { route: x => routeIdx(x, S.data, 1500) >= 0, metro: inMetro, all: () => true };
+  const L = all.filter(F[f]), cnt = k => all.filter(F[k]).length;
+  const chips = `<div class="base hwf">${hasRoute ? `<button type="button" data-hwf="route" class="${f === 'route' ? 'on' : ''}">내 길 근처 ${cnt('route')}</button>` : ''}<button type="button" data-hwf="metro" class="${f === 'metro' ? 'on' : ''}">수도권 ${cnt('metro')}</button><button type="button" data-hwf="all" class="${f === 'all' ? 'on' : ''}">전국 ${cnt('all')}</button></div>`;
+  const foot = `<p class="note">한국도로공사 실시간 문자 안내 · ${AppKit.hhmm(new Date(S.ex.at))} 받음${S.ex.test ? ' · 시험용 키로 받는 중' : ''}</p>`;
+  const empty = '<div class="card"><div class="ak-empty">지금은 알릴 상황이 없어요</div></div>';
+  if (!L.length) return chips + empty + foot;
+  const G = ['acc', 'work', 'jam', 'wx', 'etc'];   // 한 노선 안에서는 급한 것부터
+  // 사용자가 고른 B안: 노선별 묶음
+  const roads = {}; L.forEach(x => (roads[x.road] = roads[x.road] || []).push(x));
+  return chips + Object.entries(roads).sort((a, b) => b[1].length - a[1].length).map(([r, xs]) => `<div class="card hwc"><div class="hh"><b>${esc(r)}</b>
+      <span>${G.filter(g => xs.some(x => EXG(x.c) === g)).map(g => `<i style="background:${EXL[g][1]};color:${EXL[g][2]}">${EXL[g][0]} ${xs.filter(x => EXG(x.c) === g).length}</i>`).join('')}</span></div>
+      ${xs.sort((a, b) => G.indexOf(EXG(a.c)) - G.indexOf(EXG(b.c))).map(hwRow).join('')}</div>`).join('') + foot;
 }
 /* ── 알림 탭 ── */
 const ALERTS = [
@@ -1051,15 +1118,20 @@ function viewSet() {
       <li><b>카카오모빌리티 길찾기</b>(자동차 길찾기·미래 운행 정보) 사용 설정을 켜요. 화면 이름은 조금 다를 수 있어요.</li>
       <li>Apps Script 편집기 → 프로젝트 설정 → <b>스크립트 속성</b>에 이름 <code>KAKAO_REST_KEY</code>, 값에 복사한 키를 넣어요.</li></ol>
     <p class="note" style="margin-bottom:0">키는 서버에만 두고 이 화면에서는 쓰지 않아요.</p></div>`}`;
-  return (S.demo ? server : '') + places + car + look + days + kakao + jsCard + (S.demo ? '' : server) + `<p class="diag">${AppKit.env(BUILD)}</p>`;
+  const exCard = `<div class="card"><h2>한국도로공사 키 ${c.ex ? '<span class="badge">연결됨</span>' : '<span class="badge off">시험용 키 사용 중</span>'}</h2>
+    ${c.ex ? '<p class="ak-center">고속도로 실시간 상황을 받아요.</p></div>' : `<ol class="steps"><li><b>data.ex.co.kr</b> → OpenAPI 활용 → <b>인증키 발급</b>에서 이메일 등을 넣으면 키가 <b>메일로 바로</b> 와요.</li>
+      <li>서버 편집기 → 프로젝트 설정 → 스크립트 속성에 <code>EX_KEY</code> 로 넣어요.</li></ol>
+    <p class="note" style="margin-bottom:0">키가 없어도 포털의 시험용 키로 받아 보여 줘요.</p></div>`}`;
+  return (S.demo ? server : '') + places + car + look + days + kakao + jsCard + exCard + (S.demo ? '' : server) + `<p class="diag">${AppKit.env(BUILD)}</p>`;
 }
 
 /* ── 탭 ── */
 const tabs = AppKit.tabs({
-  ids: ['now', 'alarm', 'set'],
+  ids: ['now', 'hw', 'alarm', 'set'],
   render(id) {
     const sc = document.getElementById('sc');
-    sc.innerHTML = id === 'now' ? viewNow() : id === 'alarm' ? viewAlarm() : viewSet();
+    sc.innerHTML = id === 'now' ? viewNow() : id === 'hw' ? viewHw() : id === 'alarm' ? viewAlarm() : viewSet();
+    if (id === 'hw' && !S.ex) loadEx();
     if (id === 'now') requestAnimationFrame(drawMaps);
   },
 });
@@ -1082,6 +1154,10 @@ document.addEventListener('click', async e => {
     let at = 0, i = P.findIndex(x => (at += x.d) >= f * tot); if (i < 0) i = P.length - 1;
     S.focus = S.focus?.i === i ? null : { i, pos: f * 100, at: pointAt(S.data, f) }; tabs.redraw();
     document.querySelector('.mapw')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
+  if ((b = q('[data-inc]'))) { const i = +b.dataset.inc, x = incOf(S.data)[i]; S.focus = S.focus?.inc === i || !x ? null : { inc: i, pt: [x.lon, x.lat], name: `${x.road} ${exLabel(x)}` }; tabs.redraw();
+    document.querySelector('.mapw')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
+  if ((b = q('[data-hwf]'))) { S.hwF = b.dataset.hwf; tabs.redraw(); return; }
+  if ((b = q('[data-act="ex"]'))) { S.exErr = null; tabs.redraw(); return loadEx(); }
   if ((b = q('[data-bigmap]'))) { const m = b.closest('.mapw').querySelector('[data-map]'); m.classList.toggle('big'); m.style.height = m.classList.contains('big') ? '62vh' : m.dataset.h + 'px'; drawMaps(); if (m.classList.contains('big')) m.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if ((b = q('[data-traffic]'))) { const on = !LS.get('traffic', true); LS.set('traffic', on); b.classList.toggle('on', on); const m = b.closest('.mapw').querySelector('[data-map]')._map;
     if (m) on ? m.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC) : m.removeOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC); AppKit.toast(on ? '주변 도로 교통도 보여 줘요' : '내 길만 보여 줘요'); return; }
@@ -1137,10 +1213,11 @@ document.addEventListener('change', e => {
 });
 
 /* 5분마다, 그리고 다른 앱에 갔다 돌아오면 조용히 새로고침 (카카오 호출을 아끼려고 간격을 넉넉히) */
-AppKit.poll(() => refresh(true), 5 * 60e3);
+AppKit.poll(() => { refresh(true); loadEx(); }, 5 * 60e3);
 if (LS.get('justLinked')) { LS.del('justLinked'); setTimeout(() => AppKit.toast('서버에 연결했어요'), 600); }
 if (S.data) AppKit.bootDone();
 loadCfg();
+loadEx();
 refresh().finally(AppKit.bootDone);
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
 </script>
