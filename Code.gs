@@ -54,7 +54,7 @@ function handle_(b) {
     if (b.action === 'health') {
       const pl = json_('PLACES', {});
       // 서울 열린데이터광장(8088 포트)에 구글 서버가 닿는지 (응답 코드만)
-      let seoul = 'x'; try { seoul = String(UrlFetchApp.fetch('http://openapi.seoul.go.kr:8088/sample/json/AccInfo/1/1/', { muteHttpExceptions: true }).getResponseCode()); } catch (e) { seoul = '못 닿음: ' + plain_(e).slice(0, 60); }
+      let seoul = 'x'; try { const r = UrlFetchApp.fetch('http://openapi.seoul.go.kr:8088/sample/json/AccInfo/1/2/', { muteHttpExceptions: true }); seoul = r.getResponseCode() + ' ' + r.getContentText().slice(0, 900); } catch (e) { seoul = '못 닿음: ' + plain_(e).slice(0, 60); }
       return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), ex: !!P.getProperty('EX_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), ex: !!P.getProperty('EX_KEY'), tg: !!P.getProperty('TG_TOKEN'),
         chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick'), seoul: seoul } };
     }
