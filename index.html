@@ -185,13 +185,20 @@ html{background:var(--solid)}
 .hero .big small{font-size:24px;font-weight:700;margin:0 2px}
 .hero .arr{font-size:17px;font-weight:700}
 .hero .arr span{color:var(--muted);font-weight:600}
-.bars{position:relative;display:flex;align-items:flex-end;gap:3px;height:120px;margin:14px 0 4px;padding-top:18px}
+.bch{display:grid;grid-template-columns:34px 1fr;margin:18px 0 4px}
+.bch .ya{position:relative}
+.bch .ya span{position:absolute;right:6px;transform:translateY(-50%);font-size:10.5px;color:var(--muted);white-space:nowrap}
+.bch .pl{position:relative;height:140px}
+.bch .gl{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+.bars{position:absolute;inset:0;display:flex;align-items:flex-end;gap:3px}
 .bars button{flex:1;border:0;padding:0;background:var(--bar);border-radius:5px 5px 2px 2px;cursor:pointer;position:relative;min-width:0}
 .bars button.best{background:var(--best)}
 .bars button.now{background:var(--now)}
 .bars button.sel{outline:2px solid var(--ink);outline-offset:1px}
-.bars button em{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-style:normal;font-size:10.5px;font-weight:700;white-space:nowrap;margin-bottom:2px;color:var(--ink)}
-.bx{position:relative;height:16px;font-size:10.5px;color:var(--muted)}
+.bars button em{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);z-index:1;font-style:normal;font-size:10.5px;font-weight:700;white-space:nowrap;margin-bottom:2px;color:var(--ink)}
+.bx{position:relative;height:16px;font-size:10.5px;color:var(--muted);margin-left:34px}
+.bars button em.l{left:0;transform:none}.bars button em.r{left:auto;right:0;transform:none}
+.bars button em.mx{color:var(--danger)}.bars button em.mn{color:var(--p-go-ink)}
 .bx span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .pick{margin-top:8px;text-align:center;font-size:13.5px;min-height:20px}
 .legend{display:flex;justify-content:center;gap:12px;font-size:11.5px;color:var(--muted);margin-top:4px}
@@ -213,9 +220,9 @@ html{background:var(--solid)}
 .tbar{position:relative;display:flex;align-items:center;margin:20px 14px 4px;height:26px}
 .tbar .tr{flex:1;display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--line);box-shadow:0 0 0 3px var(--solid),0 1px 6px 3px rgba(0,0,0,.12)}
 .tbar .tr i{display:block;height:100%;min-width:2px}
-.tbar .pt{position:absolute;top:50%;width:22px;height:22px;margin-top:-11px;border-radius:50%;border:3px solid var(--solid);box-shadow:0 1px 4px rgba(0,0,0,.25);display:grid;place-items:center;z-index:1}
-.tbar .pt.a{left:-12px;background:var(--accent)}.tbar .pt.b{right:-12px;background:var(--ink)}
-.tbar .pt svg{width:11px;height:11px;fill:#fff}.tbar .pt.b svg{fill:var(--solid)}
+.tbar .pt{position:absolute;top:50%;width:28px;height:28px;margin-top:-14px;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
+.tbar .pt.a{left:-14px}.tbar .pt.b{right:-14px}
+
 .tbar .jm{position:absolute;bottom:100%;transform:translateX(-50%);font-size:10.5px;font-weight:800;white-space:nowrap;margin-bottom:1px}
 .tbx{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin:2px 4px 0}
 .tbx b{color:var(--ink)}
@@ -570,7 +577,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795278481';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795307557';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -736,8 +743,8 @@ function alertText(r, d) {
   t += b.t === n.t || n.min - b.min < 3 ? '\n지금 떠나는 게 가장 빨라요' : `\n가장 빠른 출발은 ${hm(b.t)} · ${dur(b.min)} (${n.min - b.min}분 덜 걸려요)`;
   return t;
 }
-/* 가장 빠른 출발: 걸리는 시간이 가장 짧은 칸. 2분 이내 차이면 더 이른 시각을 고른다 */
-function bestOf(slots) { const m = Math.min(...slots.map(x => x.min)); return slots.find(x => x.min <= m + 2); }
+/* 가장 빠른 출발: 걸리는 시간이 가장 짧은 칸 (같으면 더 이른 시각) — 막대 꼭지의 최솟값 표시와 같은 칸 */
+function bestOf(slots) { const m = Math.min(...slots.map(x => x.min)); return slots.find(x => x.min === m); }
 
 /* ── 불러오기 ── */
 const seq = AppKit.sequence();
@@ -797,7 +804,7 @@ const tollTxt = t => { const r = evRate(); return !t ? '없음' : isEv() && r ? 
 const facts = d => `<div class="facts"><div class="fact"><small>거리</small><b class="num">${d.dist.toFixed(1)}km</b></div><div class="fact"><small>통행료</small><b class="num">${tollTxt(d.toll)}</b></div><div class="fact"><small>주요 도로</small><b>${esc((d.roads || []).slice(0, 3).join(' · ') || '—')}</b></div></div>`;
 function hourTicks(d, pct) {
   const s = d.slots, t0 = s[0].t, tN = s.at(-1).t, out = [];
-  for (let t = Math.ceil(t0 / 36e5) * 36e5; t <= tN; t += 36e5) { const p = pct(t); if (p > 4 && p < 96) out.push(`<span style="left:${p.toFixed(1)}%">${hm(t).slice(0, 2)}시</span>`); }
+  for (let t = Math.ceil(t0 / 36e5) * 36e5; t <= tN; t += 36e5) { const p = pct(t); if (p > 10 && p < 96) out.push(`<span style="left:${p.toFixed(1)}%">${hm(t).slice(0, 2)}시</span>`); }
   return out.join('');
 }
 function pickLine(d) {
@@ -816,9 +823,9 @@ function trafficBar(d) {
   let at = 0, jx = null, best = 0;
   P.forEach(x => { if (j && x.n === j.n && (x.s === 1 || x.s === 2) && x.d > best) { best = x.d; jx = (at + x.d / 2) / tot * 100; } at += x.d; });
   if (jx != null) jx = Math.min(88, Math.max(12, jx));
-  return `<div class="tbar" role="img" aria-label="길 전체 막힘 정도"><span class="pt a"><svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="3"/></svg></span>
+  return `<div class="tbar" role="img" aria-label="길 전체 막힘 정도"><span class="pt a">${pinHtml(nm[0], 28)}</span>
     <div class="tr">${P.map(x => `<i style="flex:${x.d};background:${tsOf(x.s)[1]}"></i>`).join('')}</div>
-    <span class="pt b"><svg viewBox="0 0 10 10"><path d="M5 0l5 10H0z"/></svg></span>
+    <span class="pt b">${pinHtml(nm[1], 28)}</span>
     ${jx != null ? `<span class="jm" style="left:${jx.toFixed(1)}%;color:${tsOf(j.s)[1]}">${esc(j.n)} ${tsOf(j.s)[0]}</span>` : ''}</div>
     <div class="tbx"><b>${nm[0]}</b><span class="num">${d.dist.toFixed(1)}km</span><b>${nm[1]}</b></div>`;
 }
@@ -830,6 +837,14 @@ function jamsOf(d) {
 }
 const jamLine = d => { const j = jamsOf(d); return j.length ? `<p class="jamline">막히는 곳 ${j.slice(0, 3).map(x => `<b style="color:${tsOf(x.s)[1]}">${esc(x.n)} ${(x.d / 1000).toFixed(1)}km</b>`).join(' · ')}</p>` : '<p class="jamline mut">지금은 막히는 곳 없이 잘 뚫려 있어요</p>'; };
 const PLACE_NAME = { w2h: ['회사', '집'], h2w: ['집', '회사'], h2d: ['집', '숙소'] };
+// 장소 아이콘 (사용자가 고른 B안: 흰 원 + 색 테두리). 막힘 색(초록·노랑·주황·빨강)과 겹치지 않는 파랑·보라·분홍
+const PLI = { 회사: ['#3f7fb8', 'M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20'],
+  집: ['#7c5cd6', 'M3 11l9-8 9 8M5 9.5V21h14V9.5M10 21v-6h4v6'], 숙소: ['#c2508a', 'M2 19V7M2 15h20v4M22 15v-2a3 3 0 0 0-3-3h-8v5M6.5 12.5a1.5 1.5 0 1 0 0-.01'] };
+function pinSvg(name, cx, cy, r) {
+  const [c, path] = PLI[name] || PLI.회사, w = r * 1.15;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--solid)" stroke="${c}" stroke-width="3"/><svg x="${cx - w / 2}" y="${cy - w / 2}" width="${w}" height="${w}" viewBox="0 0 24 24"><path d="${path}" fill="none" stroke="${c}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+const pinHtml = (name, px) => `<svg width="${px}" height="${px}" viewBox="${-px / 2} ${-px / 2} ${px} ${px}" style="display:block;overflow:visible" aria-label="${name}">${pinSvg(name, 0, 0, px / 2 - 2)}</svg>`;
 function svgMap(el, d) {
   const P = (d.path || []).flatMap(x => x.p); if (P.length < 2) { el.innerHTML = '<div class="ak-empty">길 모양을 받지 못했어요</div>'; return; }
   const W = el.clientWidth || 340, H = el.clientHeight || 220, pad = 26, k = Math.cos(37.4 * Math.PI / 180);
@@ -840,8 +855,8 @@ function svgMap(el, d) {
   const all = d.path.map(x => line(x.p)).join(''), a = P[0], b = P.at(-1), nm = PLACE_NAME[d.route] || ['출발', '도착'];
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
     ${d.path.map(x => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="5"/>`).join('')}
-    <circle cx="${X(a)}" cy="${Y(a)}" r="7" class="pin" fill="var(--accent)"/><circle cx="${X(b)}" cy="${Y(b)}" r="7" class="pin" fill="var(--ink)"/>
-    <text x="${+X(a) + 11}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 11}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text></svg>
+    ${pinSvg(nm[0], +X(a), +Y(a), 12)}${pinSvg(nm[1], +X(b), +Y(b), 12)}
+    <text x="${+X(a) + 17}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 17}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text></svg>
     <span class="why2">${S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
 }
 let kakaoP = null;
@@ -861,8 +876,8 @@ function kakaoMap(el, d) {
   const bounds = new km.LatLngBounds(); P.forEach(p => bounds.extend(new km.LatLng(p[1], p[0])));
   (d.path || []).forEach(x => new km.Polyline({ map, path: x.p.map(p => new km.LatLng(p[1], p[0])), strokeWeight: 6, strokeColor: tsOf(x.s)[1], strokeOpacity: .95 }));
   const nm = PLACE_NAME[d.route] || ['출발', '도착'];
-  [[P[0], nm[0]], [P.at(-1), nm[1]]].forEach(([p, t]) => new km.CustomOverlay({ map, position: new km.LatLng(p[1], p[0]), yAnchor: 1.3,
-    content: `<div style="background:#0d2436;color:#fff;font-size:12px;font-weight:700;padding:3px 8px;border-radius:8px">${t}</div>` }));
+  [[P[0], nm[0]], [P.at(-1), nm[1]]].forEach(([p, t]) => new km.CustomOverlay({ map, position: new km.LatLng(p[1], p[0]), yAnchor: .5, xAnchor: .5,
+    content: `<div style="display:flex;align-items:center;gap:3px">${pinHtml(t, 28)}<b style="background:#0d2436;color:#fff;font-size:12px;padding:2px 7px;border-radius:8px">${t}</b></div>` }));
   map.setBounds(bounds, 30, 30, 30, 30);
   if (LS.get('traffic', true)) map.addOverlayMapTypeId(km.MapTypeId.TRAFFIC);
   const ov = document.createElement('div'); ov.className = 'ov';
@@ -879,15 +894,22 @@ async function drawMaps() {
 
 /* 큰 숫자 + 출발 시각별 막대 (사용자가 고른 A안) */
 function nowA(d) {
-  const s = d.slots, n = s[0], b = bestOf(s), max = Math.max(...s.map(x => x.min)), min = Math.min(...s.map(x => x.min)), lo = Math.max(0, min - (max - min) * .9 - 5);
-  const t0 = s[0].t, span = Math.max(1, s.at(-1).t - t0);
-  const bars = s.map((x, i) => `<button type="button" data-sel="${i}" class="${i === 0 ? 'now' : ''}${x === b && i ? ' best' : ''}${S.sel === i ? ' sel' : ''}" style="height:${((x.min - lo) / (max - lo) * 100).toFixed(1)}%" aria-label="${hm(x.t)} 출발 ${dur(x.min)}">${i === 0 ? '<em>지금</em>' : x === b ? `<em>${hm(x.t)}</em>` : ''}</button>`).join('');
+  const s = d.slots, n = s[0], b = bestOf(s), max = Math.max(...s.map(x => x.min)), min = Math.min(...s.map(x => x.min));
+  // Y축 눈금: 10·15·20·30분 중 4칸 안쪽이 되는 간격, 아래는 가장 짧은 시간보다 한 칸 낮게(0부터 그리면 차이가 안 보여서)
+  const st = [10, 15, 20, 30, 60].find(v => (Math.ceil(max / v) - Math.floor(min / v) + 1) <= 4) || 60, lo = Math.max(0, (Math.floor(min / st) - 1) * st), hi = Math.ceil(max / st) * st;
+  const yp = v => ((v - lo) / (hi - lo) * 100).toFixed(1), ticks = []; for (let v = lo; v <= hi; v += st) ticks.push(v);
+  const iMx = s.findIndex(x => x.min === max), iMn = s.findIndex(x => x.min === min), N = s.length;
+  const tag = (i, cls, txt) => `<em class="${cls}${i < 3 ? ' l' : i > N - 4 ? ' r' : ''}">${txt}</em>`;
+  const bars = s.map((x, i) => `<button type="button" data-sel="${i}" class="${i === 0 ? 'now' : ''}${x === b && i ? ' best' : ''}${S.sel === i ? ' sel' : ''}" style="height:${yp(x.min)}%" aria-label="${hm(x.t)} 출발 ${dur(x.min)}">${i === iMx ? tag(i, 'mx', dur(x.min)) : i === iMn ? tag(i, 'mn', dur(x.min)) : ''}</button>`).join('');
+  const chart = `<div class="bch" data-noswipe><div class="ya">${ticks.map(v => `<span style="top:${100 - yp(v)}%">${v}분</span>`).join('')}</div>
+    <div class="pl">${ticks.map(v => `<i class="gl" style="top:${100 - yp(v)}%"></i>`).join('')}<div class="bars">${bars}</div></div></div>`;
   // 막대 칸은 같은 너비라 시각 눈금도 칸 순서로 맞춘다 (첫 칸만 '지금'이라 간격이 조금 짧다)
   const pct = t => { let k = s.findIndex(x => x.t >= t); if (k < 0) k = s.length - 1; return (k + .5) / s.length * 100; };
   const hero = `<div class="card hero"><div class="lb">${label0(d)}</div><div class="big num">${durBig(n.min)}</div>
     <div class="arr num"><span>도착</span> ${hm(n.t + n.min * 6e4)}</div>${bestLine(d)}</div>`;
-  const barsIn = `<div class="bars" data-noswipe>${bars}</div><div class="bx">${hourTicks(d, pct)}</div>
+  const barsIn = `${chart}<div class="bx"><span style="left:0;transform:none">${n.live === false ? hm(n.t) : '지금'}</span>${hourTicks(d, pct)}</div>
     <div class="legend"><span><i style="background:var(--now)"></i>지금</span><span><i style="background:var(--best)"></i>가장 빠름</span><span><i style="background:var(--bar)"></i>그 밖</span></div>
+    <p class="note" style="margin:4px 0 0">세로는 걸리는 시간(분), 가로는 출발 시각이에요</p>
     <p class="pick" id="pick">${pickLine(d)}</p>`;
   const barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
   // 사용자가 고른 B안: 길 지도(막힘 색)를 맨 위에, 그 아래 걸리는 시간·출발 시각별 막대
