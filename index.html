@@ -161,13 +161,15 @@ html{background:var(--solid)}
 /* 길 고르기 칩 */
 .chips{display:flex;gap:6px;margin:10px 0 4px}
 .chip{flex:1;min-width:0;border:1px solid transparent;background:var(--chip);color:var(--ink);font:inherit;border-radius:14px;padding:8px 4px;cursor:pointer;display:grid;gap:1px;justify-items:center;min-height:52px}
-.chip b{font-size:13.5px}.chip small{font-size:11px;color:var(--muted);white-space:nowrap}
+.chip b{font-size:13.5px;white-space:nowrap}.chip small{font-size:11px;color:var(--muted);white-space:nowrap}
 .chip.on{background:var(--accent);color:var(--on-accent)}.chip.on small{color:inherit;opacity:.85}
 .why{text-align:center;font-size:12.5px;color:var(--muted);margin:6px 0 12px;word-break:keep-all;text-wrap:balance}
 .why b{color:var(--ink)}
 .base{display:flex;justify-content:center;gap:6px;margin:-4px 0 12px}
 .base button{border:1px solid var(--line);background:var(--solid);color:var(--muted);font:inherit;font-size:12.5px;font-weight:600;border-radius:999px;padding:6px 12px;min-height:34px}
 .base button.on{border-color:var(--accent);color:var(--ink);background:var(--soft)}
+.herebtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin:6px 0 0;border:1.5px dashed var(--accent);background:var(--solid);color:var(--ink);font:inherit;font-size:14px;font-weight:700;border-radius:14px;padding:10px;min-height:44px}
+.herebtn.on{border-style:solid;background:var(--soft)}
 /* 정보 칸 3개 */
 .facts{display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:8px}
 .fact{background:var(--soft);border-radius:12px;padding:9px 10px;min-width:0}
@@ -577,7 +579,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795307557';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795308210';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -655,6 +657,7 @@ function nextTrip(now = NOW()) {
 const DEMO_INFO = {
   w2h: { dist: 47.6, toll: 1900, roads: ['서부간선도로', '강남순환로', '용인서울고속도로'], base: 50 },
   h2w: { dist: 48.3, toll: 1900, roads: ['용인서울고속도로', '강남순환로', '서부간선도로'], base: 53 },
+  here: { dist: 31.2, toll: 1100, roads: ['경부고속도로', '양재대로'], base: 36 },
   h2d: { dist: 46.9, toll: 1900, roads: ['경부고속도로', '올림픽대로', '노들로'], base: 49 },
 };
 function demoMin(r, ms) {
@@ -670,7 +673,7 @@ function demoLoad({ route, from, step, hours }) {
   const now = NOW(), t0 = Math.max(now, from || 0), slots = [{ t: t0, min: demoMin(route, t0), live: !from || from <= now }];
   for (let t = Math.ceil((t0 + 6e4) / (step * 6e4)) * step * 6e4; t <= t0 + hours * 36e5; t += step * 6e4) slots.push({ t, min: demoMin(route, t) });
   const I = DEMO_INFO[route];
-  return { route, slots, dist: I.dist, toll: I.toll, roads: I.roads, path: demoPath(route, t0), at: now };
+  return { route, to: route === 'here' ? destNow() : undefined, slots, dist: I.dist, toll: I.toll, roads: I.roads, path: demoPath(route, t0), at: now };
 }
 const DEMO_ROADS = [
   ['양천로', [[126.8343, 37.5602], [126.8480, 37.5575], [126.8620, 37.5545]]],
@@ -682,7 +685,9 @@ const DEMO_ROADS = [
 // 막힘 정도: 1 정체 · 2 지체 · 3 서행 · 4 원활 (카카오 길찾기 traffic_state 와 같은 번호)
 function demoPath(route, ms) {
   const lv = Math.max(0, (demoMin(route, ms) - DEMO_INFO[route].base) / 60), W = [1.5, 1.9, 1.2, .9, 1.6, .5, .3, .8, 1.3, .6, .4, .7, .2];
-  const roads = route === 'w2h' ? DEMO_ROADS : DEMO_ROADS.slice().reverse().map(([n, p]) => [n, p.slice().reverse()]);
+  const DP = { home: [127.1158, 37.2755], work: [126.8343, 37.5602], dorm: [126.8290, 37.5667] }, o = [127.0276, 37.4979], e = DP[S.dest || 'home'] || DP.home;
+  const roads = route === 'here' ? [['강남대로', [o, [o[0] + (e[0] - o[0]) * .15, o[1] + (e[1] - o[1]) * .1]]], ['경부고속도로', [[o[0] + (e[0] - o[0]) * .15, o[1] + (e[1] - o[1]) * .1], [o[0] + (e[0] - o[0]) * .5, o[1] + (e[1] - o[1]) * .55], [o[0] + (e[0] - o[0]) * .85, o[1] + (e[1] - o[1]) * .8], e]]]
+    : route === 'w2h' ? DEMO_ROADS : DEMO_ROADS.slice().reverse().map(([n, p]) => [n, p.slice().reverse()]);
   const out = []; let k = 0;
   roads.forEach(([n, p]) => { for (let i = 0; i < p.length - 1; i++) { const v = lv * W[k++ % W.length], st = v > 1 ? 1 : v > .7 ? 2 : v > .45 ? 3 : 4;
     const seg = [p[i], p[i + 1]], d = geoLen(seg), last = out.at(-1);
@@ -749,14 +754,26 @@ function bestOf(slots) { const m = Math.min(...slots.map(x => x.min)); return sl
 /* ── 불러오기 ── */
 const seq = AppKit.sequence();
 const routeNow = () => S.route || nextTrip().r;
+// 지금 위치에서: 목적지는 고른 곳, 처음엔 다음 길의 도착지. 위치는 서버로 길찾기를 물을 때만 보낸다
+const DESTN = { home: '집', work: '회사', dorm: '숙소' }, TRIP_TO = { w2h: 'home', h2w: 'work', h2d: 'dorm' };
+const destNow = () => S.dest || TRIP_TO[nextTrip().r];
+function here() {
+  if (S.demo) return Promise.resolve({ x: 127.0276, y: 37.4979 });   // 예시: 강남역
+  if (!navigator.geolocation) return Promise.reject(new Error('이 휴대폰에서는 위치를 쓸 수 없어요'));
+  return new Promise((ok, no) => navigator.geolocation.getCurrentPosition(p => ok({ x: p.coords.longitude, y: p.coords.latitude }),
+    e => no(new Error(e.code === 1 ? '위치 권한을 허용해 주세요 (설정 → 개인정보 보호 → 위치 서비스)' : '지금 위치를 찾지 못했어요. 잠시 후 다시 해주세요')),
+    { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }));
+}
 function loadArgs() {
   const t = nextTrip(), r = routeNow(), cfg = S.cfg || DEMO_CFG;
   const from = S.base === 'trip' && !t.inWindow && t.r === r ? t.at : 0;
+  if (r === 'here') return { route: r, to: destNow(), step: LS.get('step', cfg.step || 10), hours: LS.get('hours', cfg.hours || 4) };
   return { route: r, from, step: LS.get('step', cfg.step || 10), hours: LS.get('hours', cfg.hours || 4) };
 }
 async function refresh(quiet) {
   const mine = seq.next(), args = loadArgs();
   try {
+    if (args.route === 'here') args.origin = await here();
     const d = await AppKit.spin('#refresh', api('load', args));
     if (!seq.is(mine)) return;
     d.args = args; S.err = null; S.data = d; S.lastOk = new Date(); LS.set('data', d);
@@ -778,7 +795,13 @@ async function loadCfg() {
 /* ── 지금 탭 ── */
 function viewNow() {
   const t = nextTrip(), r = routeNow(), d = S.data;
+  const pinI = '<svg class="ak-ic" viewBox="0 0 24 24" style="width:18px;height:18px;vertical-align:-4px"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
   const chips = Object.entries(ROUTES).map(([k, v]) => `<button class="chip${k === r ? ' on' : ''}" data-route="${k}" type="button"><b>${v.name}</b><small>${v.short}</small></button>`).join('');
+  // 사용자가 고른 B안: 칩 아래 '지금 위치에서 출발' 버튼
+  const hereBtn = `<button type="button" class="herebtn${r === 'here' ? ' on' : ''}" data-route="${r === 'here' ? 'auto' : 'here'}">${pinI} ${r === 'here' ? '지금 위치에서 보는 중 · 끄기' : '지금 위치에서 출발'}</button>`;
+  if (r === 'here') return `<div class="chips">${chips}</div>${hereBtn}<p class="why">지금 있는 곳에서 <b>${DESTN[destNow()]}</b>까지예요 · <a href="#" data-route="auto">자동으로 돌아가기</a></p>
+    <div class="base">${Object.entries(DESTN).map(([k, v]) => `<button type="button" data-dest="${k}" class="${destNow() === k ? 'on' : ''}">${v}까지</button>`).join('')}</div>
+    ${d && d.route === 'here' && d.to === destNow() && d.slots?.length ? nowA(d) : `<div class="card"><div class="ak-empty">${S.err ? esc(S.err) : '지금 위치를 찾는 중이에요…'}<br><button type="button" data-act="retry">다시 시도</button></div></div>`}`;
   const why = t.r === r
     ? (t.inWindow ? `지금은 <b>${t.why}</b>이라 골랐어요` : `다음 길은 <b>${dayWord(t.key, NOW())}(${DOW[dowOf(t.key)]}) ${t.why.replace(/^.요일 /, '')}</b>이에요`)
     : `직접 고른 길이에요 · <a href="#" data-route="auto">자동으로 돌아가기</a>`;
@@ -787,7 +810,7 @@ function viewNow() {
   let body;
   if (!d || d.route !== r || !d.slots?.length) body = `<div class="card"><div class="ak-empty">${S.err ? esc(S.err) : '길을 살펴보는 중이에요…'}<br><button type="button" data-act="retry">다시 시도</button></div></div>`;
   else body = nowA(d);
-  return `<div class="chips">${chips}</div><p class="why">${why}</p>${base}${body}`;
+  return `<div class="chips">${chips}</div>${hereBtn}<p class="why">${why}</p>${base}${body}`;
 }
 const label0 = d => d.slots[0].live === false ? `${hm(d.slots[0].t)} 출발` : '지금 출발';
 function bestLine(d) {
@@ -819,7 +842,7 @@ const tleg = () => `<div class="tleg">${[4, 3, 2, 1].map(k => `<span><i style="b
 // 길 전체를 한 줄 막대로: 출발(왼쪽) → 도착(오른쪽), 구간 길이만큼 막힘 색. 가장 긴 막힘 위에는 도로 이름
 function trafficBar(d) {
   const P = d.path || [], tot = P.reduce((a, x) => a + x.d, 0); if (!P.length || !tot) return '';
-  const nm = PLACE_NAME[d.route] || ['출발', '도착'], j = jamsOf(d)[0];
+  const nm = placeNames(d), j = jamsOf(d)[0];
   let at = 0, jx = null, best = 0;
   P.forEach(x => { if (j && x.n === j.n && (x.s === 1 || x.s === 2) && x.d > best) { best = x.d; jx = (at + x.d / 2) / tot * 100; } at += x.d; });
   if (jx != null) jx = Math.min(88, Math.max(12, jx));
@@ -837,12 +860,14 @@ function jamsOf(d) {
 }
 const jamLine = d => { const j = jamsOf(d); return j.length ? `<p class="jamline">막히는 곳 ${j.slice(0, 3).map(x => `<b style="color:${tsOf(x.s)[1]}">${esc(x.n)} ${(x.d / 1000).toFixed(1)}km</b>`).join(' · ')}</p>` : '<p class="jamline mut">지금은 막히는 곳 없이 잘 뚫려 있어요</p>'; };
 const PLACE_NAME = { w2h: ['회사', '집'], h2w: ['집', '회사'], h2d: ['집', '숙소'] };
+const placeNames = d => d.route === 'here' ? ['내 위치', DESTN[d.to] || '집'] : PLACE_NAME[d.route] || ['출발', '도착'];
 // 장소 아이콘 (사용자가 고른 B안: 흰 원 + 색 테두리). 막힘 색(초록·노랑·주황·빨강)과 겹치지 않는 파랑·보라·분홍
 const PLI = { 회사: ['#3f7fb8', 'M4 21V5l8-3v19M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20'],
+  '내 위치': ['#0f766e', 'M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'],
   집: ['#7c5cd6', 'M3 11l9-8 9 8M5 9.5V21h14V9.5M10 21v-6h4v6'], 숙소: ['#c2508a', 'M2 19V7M2 15h20v4M22 15v-2a3 3 0 0 0-3-3h-8v5M6.5 12.5a1.5 1.5 0 1 0 0-.01'] };
 function pinSvg(name, cx, cy, r) {
   const [c, path] = PLI[name] || PLI.회사, w = r * 1.15;
-  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--solid)" stroke="${c}" stroke-width="3"/><svg x="${cx - w / 2}" y="${cy - w / 2}" width="${w}" height="${w}" viewBox="0 0 24 24"><path d="${path}" fill="none" stroke="${c}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" style="fill:var(--solid)" stroke="${c}" stroke-width="3"/><svg x="${cx - w / 2}" y="${cy - w / 2}" width="${w}" height="${w}" viewBox="0 0 24 24"><path d="${path}" fill="none" stroke="${c}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 const pinHtml = (name, px) => `<svg width="${px}" height="${px}" viewBox="${-px / 2} ${-px / 2} ${px} ${px}" style="display:block;overflow:visible" aria-label="${name}">${pinSvg(name, 0, 0, px / 2 - 2)}</svg>`;
 function svgMap(el, d) {
@@ -852,7 +877,7 @@ function svgMap(el, d) {
   const sc = Math.min((W - pad * 2) / Math.max(1e-6, x1 - x0), (H - pad * 2) / Math.max(1e-6, y1 - y0)), ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2;
   const X = p => (ox + (p[0] * k - x0) * sc).toFixed(1), Y = p => (oy + (y1 - p[1]) * sc).toFixed(1), line = p => p.map((q, i) => (i ? 'L' : 'M') + X(q) + ',' + Y(q)).join('');
   const grid = []; for (let g = 40; g < W; g += 40) grid.push(`<line x1="${g}" x2="${g}" y1="0" y2="${H}" class="gr"/>`); for (let g = 40; g < H; g += 40) grid.push(`<line y1="${g}" y2="${g}" x1="0" x2="${W}" class="gr"/>`);
-  const all = d.path.map(x => line(x.p)).join(''), a = P[0], b = P.at(-1), nm = PLACE_NAME[d.route] || ['출발', '도착'];
+  const all = d.path.map(x => line(x.p)).join(''), a = P[0], b = P.at(-1), nm = placeNames(d);
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
     ${d.path.map(x => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="5"/>`).join('')}
     ${pinSvg(nm[0], +X(a), +Y(a), 12)}${pinSvg(nm[1], +X(b), +Y(b), 12)}
@@ -875,7 +900,7 @@ function kakaoMap(el, d) {
   const map = new km.Map(el, { center: new km.LatLng(P[0][1], P[0][0]), level: 9 });
   const bounds = new km.LatLngBounds(); P.forEach(p => bounds.extend(new km.LatLng(p[1], p[0])));
   (d.path || []).forEach(x => new km.Polyline({ map, path: x.p.map(p => new km.LatLng(p[1], p[0])), strokeWeight: 6, strokeColor: tsOf(x.s)[1], strokeOpacity: .95 }));
-  const nm = PLACE_NAME[d.route] || ['출발', '도착'];
+  const nm = placeNames(d);
   [[P[0], nm[0]], [P.at(-1), nm[1]]].forEach(([p, t]) => new km.CustomOverlay({ map, position: new km.LatLng(p[1], p[0]), yAnchor: .5, xAnchor: .5,
     content: `<div style="display:flex;align-items:center;gap:3px">${pinHtml(t, 28)}<b style="background:#0d2436;color:#fff;font-size:12px;padding:2px 7px;border-radius:8px">${t}</b></div>` }));
   map.setBounds(bounds, 30, 30, 30, 30);
@@ -997,6 +1022,7 @@ document.addEventListener('click', async e => {
   let b;
   if (q('#refresh')) return refresh();
   if ((b = q('[data-route]'))) { e.preventDefault(); S.route = b.dataset.route === 'auto' ? null : b.dataset.route; S.sel = null; S.base = 'now'; tabs.redraw(); return refresh(); }
+  if ((b = q('[data-dest]'))) { S.dest = b.dataset.dest; S.sel = null; S.sig = null; tabs.redraw(); return refresh(); }
   if ((b = q('[data-base]'))) { S.base = b.dataset.base; S.sel = null; tabs.redraw(); return refresh(); }
   if ((b = q('[data-sel]'))) { S.sel = +b.dataset.sel; document.querySelectorAll('.bars button').forEach((x, i) => x.classList.toggle('sel', i === S.sel)); document.getElementById('pick').innerHTML = pickLine(S.data); return; }
   if ((b = q('[data-act="retry"]'))) return refresh();
