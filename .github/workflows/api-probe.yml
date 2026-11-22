@@ -16,7 +16,11 @@ jobs:
           mkdir out && cd out
           g() { curl -sSL -m 40 -A 'Mozilla/5.0' "$2" -o "$1" -w "$1 %{http_code} %{size_download}\n" || echo "$1 실패"; }
           {
-          g kakao-nothing.txt 'https://example.com/'
+          g seoul-acc.json 'http://openapi.seoul.go.kr:8088/sample/json/AccInfo/1/5/'
+          g seoul-acc.xml 'http://openapi.seoul.go.kr:8088/sample/xml/AccInfo/1/5/'
+          g seoul-acc-https.json 'https://openapi.seoul.go.kr:8088/sample/json/AccInfo/1/5/'
+          g seoul-road.json 'http://openapi.seoul.go.kr:8088/sample/json/AccMainCode/1/50/'
+          g seoul-sub.json 'http://openapi.seoul.go.kr:8088/sample/json/AccSubCode/1/50/'
           g its-event-9443.json 'https://openapi.its.go.kr:9443/eventInfo?apiKey=test&type=all&eventType=all&minX=126.8&maxX=127.2&minY=37.2&maxY=37.6&getType=json'
           g its-event-www.json 'https://www.its.go.kr:9443/eventInfo?apiKey=test&type=all&eventType=all&minX=126.8&maxX=127.2&minY=37.2&maxY=37.6&getType=json'
           g its-event-page.html 'https://www.its.go.kr/opendata/opendataList?service=event'

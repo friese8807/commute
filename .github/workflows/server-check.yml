@@ -20,7 +20,7 @@ jobs:
           U="https://script.google.com/macros/s/$DEPLOY_ID/exec"
           R=$(curl -sL -m 60 -H 'Content-Type: text/plain;charset=utf-8' --data '{"action":"health"}' "$U" || true)
           if echo "$R" | grep -q '"ok":true'; then
-            echo "::notice::서버 응답: $(echo "$R" | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];n={"setup":"처음 준비(setup)","kakao":"카카오 키","jsKey":"카카오 지도 키","ex":"도로공사 키","tg":"텔레그램 토큰","chat":"텔레그램 대화방","places":"장소 3곳","trigger":"알림 확인(5분마다)"};print(" · ".join((n[k]+(" ✓" if v else " ✗")) if isinstance(v,bool) else (k+"="+",".join(v)) for k,v in d.items()))')"
+            echo "::notice::서버 응답: $(echo "$R" | python3 -c 'import json,sys;d=json.load(sys.stdin)["data"];n={"setup":"처음 준비(setup)","kakao":"카카오 키","jsKey":"카카오 지도 키","ex":"도로공사 키","tg":"텔레그램 토큰","chat":"텔레그램 대화방","places":"장소 3곳","trigger":"알림 확인(5분마다)"};print(" · ".join((n[k]+(" ✓" if v else " ✗")) if isinstance(v,bool) else (k+"="+(v if isinstance(v,str) else ",".join(v))) for k,v in d.items()))')"
           elif echo "$R" | grep -qiE 'accounts.google|authoriz|권한|로그인'; then
             echo "::warning::서버가 아직 허용(권한 승인)을 받지 못했어요 — 편집기에서 setup 을 실행하고 허용을 눌러 주세요"
           else

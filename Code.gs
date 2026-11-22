@@ -53,8 +53,10 @@ function handle_(b) {
     // 점검(GitHub Actions): 키·주소 값은 돌려주지 않고 있는지 여부만
     if (b.action === 'health') {
       const pl = json_('PLACES', {});
+      // 서울 열린데이터광장(8088 포트)에 구글 서버가 닿는지 (응답 코드만)
+      let seoul = 'x'; try { seoul = String(UrlFetchApp.fetch('http://openapi.seoul.go.kr:8088/sample/json/AccInfo/1/1/', { muteHttpExceptions: true }).getResponseCode()); } catch (e) { seoul = '못 닿음: ' + plain_(e).slice(0, 60); }
       return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), ex: !!P.getProperty('EX_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), ex: !!P.getProperty('EX_KEY'), tg: !!P.getProperty('TG_TOKEN'),
-        chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick') } };
+        chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick'), seoul: seoul } };
     }
     const key = P.getProperty('APP_KEY');
     if (!key) return { ok: false, code: 'setup', message: '서버 준비가 아직이에요. 편집기에서 setup() 을 한 번 실행해 주세요' };
