@@ -16,6 +16,7 @@ jobs:
           mkdir out && cd out
           g() { curl -sSL -m 40 -A 'Mozilla/5.0' "$2" -o "$1" -w "$1 %{http_code} %{size_download}\n" || echo "$1 실패"; }
           {
+          g kakao-nothing.txt 'https://example.com/'
           g its-event-9443.json 'https://openapi.its.go.kr:9443/eventInfo?apiKey=test&type=all&eventType=all&minX=126.8&maxX=127.2&minY=37.2&maxY=37.6&getType=json'
           g its-event-www.json 'https://www.its.go.kr:9443/eventInfo?apiKey=test&type=all&eventType=all&minX=126.8&maxX=127.2&minY=37.2&maxY=37.6&getType=json'
           g its-event-page.html 'https://www.its.go.kr/opendata/opendataList?service=event'
@@ -23,7 +24,9 @@ jobs:
           g ex-sms.json 'https://data.ex.co.kr/openapi/burstInfo/realTimeSms?key=test&type=json'
           g ex-intro.html 'https://data.ex.co.kr/openapi/intro/introduce01'
           g ex-api0611.html 'https://data.ex.co.kr/openapi/basicinfo/openApiInfoM?apiId=0611'
-          g ex-list.html 'https://data.ex.co.kr/openapi/basicinfo/openApiInfoList'
+          g ex-sms-all.json 'https://data.ex.co.kr/openapi/burstInfo/realTimeSms?key=test&type=json&numOfRows=200&pageNo=1'
+          g ex-list.html 'https://data.ex.co.kr/openapi/basicinfo/openApiInfo'
+          for p in 2 3 4 5 6; do g ex-list$p.html "https://data.ex.co.kr/openapi/basicinfo/openApiInfo?pageIndex=$p"; done
           } > status.txt 2>&1
           # HTML 은 글자만 남겨 읽기 쉽게
           for f in *.html; do python3 - "$f" <<'PY'
