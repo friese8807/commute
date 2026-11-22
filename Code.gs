@@ -250,7 +250,7 @@ function nextTrip_(now) {
 /* ── 알림 ── */
 function dur_(m) { return m >= 60 ? (Math.floor(m / 60) + '시간' + (m % 60 ? ' ' + (m % 60) + '분' : '')) : m + '분'; }
 function alertText_(d) {
-  const s = d.slots, n = s[0], mn = Math.min.apply(null, s.map(x => x.min)), b = s.filter(x => x.min <= mn + 2)[0];
+  const s = d.slots, n = s[0], mn = Math.min.apply(null, s.map(x => x.min)), b = s.filter(x => x.min === mn)[0];
   const hm = t => kst_(t, 'HH:mm');
   let t = '[출발 도우미] ' + ROUTES[d.route].name + ' ' + ROUTES[d.route].short + '\n지금 출발하면 ' + dur_(n.min) + ' (도착 ' + hm(n.t + n.min * 6e4) + ')';
   t += (b.t === n.t || n.min - b.min < 3) ? '\n지금 떠나는 게 가장 빨라요' : '\n가장 빠른 출발은 ' + hm(b.t) + ' · ' + dur_(b.min) + ' (' + (n.min - b.min) + '분 덜 걸려요)';
@@ -277,7 +277,7 @@ function test_() {
 }
 function widget_() {
   const t = nextTrip_(Date.now()), d = load_({ route: t.r, step: 30, hours: 3 }), n = d.slots[0];
-  const mn = Math.min.apply(null, d.slots.map(x => x.min)), b = d.slots.filter(x => x.min <= mn + 2)[0];
+  const mn = Math.min.apply(null, d.slots.map(x => x.min)), b = d.slots.filter(x => x.min === mn)[0];
   return { route: d.route, name: ROUTES[d.route].name, short: ROUTES[d.route].short, min: n.min, arrive: kst_(n.t + n.min * 6e4, 'HH:mm'),
     best: kst_(b.t, 'HH:mm'), bestMin: b.min, gain: n.min - b.min, at: kst_(Date.now(), 'HH:mm') };
 }
