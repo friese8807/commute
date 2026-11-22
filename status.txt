@@ -1,0 +1,37 @@
+curl: (28) Connection timed out after 40002 milliseconds
+seoul-acc.json 000 0
+seoul-acc.json 실패
+curl: (28) Connection timed out after 40002 milliseconds
+seoul-acc.xml 000 0
+seoul-acc.xml 실패
+curl: (28) Connection timed out after 40000 milliseconds
+seoul-acc-https.json 000 0
+seoul-acc-https.json 실패
+curl: (28) Connection timed out after 40002 milliseconds
+seoul-road.json 000 0
+seoul-road.json 실패
+curl: (28) Connection timed out after 40000 milliseconds
+seoul-sub.json 000 0
+seoul-sub.json 실패
+curl: (28) Connection timed out after 40001 milliseconds
+its-event-9443.json 000 0
+its-event-9443.json 실패
+curl: (28) Connection timed out after 40001 milliseconds
+its-event-www.json 000 0
+its-event-www.json 실패
+curl: (28) Connection timed out after 40001 milliseconds
+its-event-page.html 000 0
+its-event-page.html 실패
+curl: (28) Connection timed out after 40001 milliseconds
+its-intro.html 000 0
+its-intro.html 실패
+ex-sms.json 200 5475
+ex-intro.html 200 81682
+ex-api0611.html 200 107254
+ex-sms-all.json 200 51843
+ex-list.html 405 1142
+ex-list2.html 405 1142
+ex-list3.html 405 1142
+ex-list4.html 405 1142
+ex-list5.html 405 1142
+ex-list6.html 405 1142
