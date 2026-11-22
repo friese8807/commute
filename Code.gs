@@ -168,13 +168,13 @@ function load_(b) {
 // 여러 출발 시각을 한꺼번에(fetchAll) 묻는다. 받은 값은 지금=3분, 미래=10분 기억한다
 function directions_(route, o, d, list) {
   const key = kakaoKey_(), cache = CacheService.getScriptCache(), ver = P.getProperty('PVER') || '0';
-  const ck = it => ['nv2', ver, route, it.live ? 'now' + Math.floor(it.t / 18e4) : kst_(it.t, 'yyyyMMddHHmm'), it.full ? 'f' : 's'].join('|');
+  const ck = it => ['nv3', ver, route, it.live ? 'now' + Math.floor(it.t / 18e4) : kst_(it.t, 'yyyyMMddHHmm'), it.full ? 'f' : 's'].join('|');
   const hit = cache.getAll(list.map(ck)), res = list.map(it => hit[ck(it)] ? JSON.parse(hit[ck(it)]) : null);
   const need = list.map((it, i) => res[i] ? -1 : i).filter(i => i >= 0);
   if (need.length) {
     const qs = 'origin=' + o.x + ',' + o.y + '&destination=' + d.x + ',' + d.y + '&priority=RECOMMEND';
     const reqs = need.map(i => { const it = list[i];
-      return { url: NAVI + (it.live ? 'directions?' : 'future/directions?departure_time=' + kst_(it.t, 'yyyyMMddHHmm') + '&') + qs + '&summary=' + (it.full ? 'false' : 'true'),
+      return { url: NAVI + (it.live ? 'directions?' : 'future/directions?departure_time=' + kst_(it.t, 'yyyyMMddHHmm') + '&') + qs + '&summary=' + (it.full ? 'false' : 'true') + '&alternatives=true',
         headers: { Authorization: 'KakaoAK ' + key }, muteHttpExceptions: true }; });
     let rr;
     try { rr = UrlFetchApp.fetchAll(reqs); }
@@ -185,7 +185,8 @@ function directions_(route, o, d, list) {
       const i = need[k];
       if (!r) return;
       if (r.getResponseCode() !== 200) { if (i === 0) throw new Error(kakaoErr_(r, '길찾기')); return; }
-      const j = JSON.parse(r.getContentText()), rt = (j.routes || [])[0];
+      // 여러 길(alternatives) 중 그 시각에 가장 빠른 길을 쓴다 — 카카오가 막히는 길 하나만 고집해 한 칸만 튀던 것 방지
+      const j = JSON.parse(r.getContentText()), ok = (j.routes || []).filter(x => x.result_code === 0 && x.summary), rt = ok.sort((a, b) => a.summary.duration - b.summary.duration)[0] || (j.routes || [])[0];
       if (!rt || rt.result_code !== 0) { if (i === 0) throw new Error('카카오 길찾기: ' + ((rt && rt.result_msg) || '길을 찾지 못했어요')); return; }
       const s = rt.summary, v = { sec: s.duration, dist: s.distance, toll: (s.fare || {}).toll || 0 };
       if (list[i].full) { v.roads = mainRoads_(rt.sections || []); v.path = path_(rt.sections || []); }

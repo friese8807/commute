@@ -610,7 +610,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795312463';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795312705';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -855,7 +855,10 @@ function viewNow() {
 const label0 = d => d.slots[0].live === false ? `${hm(d.slots[0].t)} 출발` : '지금 출발';
 function bestLine(d) {
   const n = d.slots[0], b = bestOf(d.slots), gain = n.min - b.min;
-  if (b.t === n.t || gain < 3) return `<div class="best same"><svg class="ak-ic" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg><span>${n.live === false ? '이 시각' : '지금'} 떠나는 게 가장 빨라요. 앞으로 ${Math.round((d.slots.at(-1).t - n.t) / 36e5)}시간 동안 더 빨라지지 않아요</span></div>`;
+  const ok = `<div class="best same"><svg class="ak-ic" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg><span>`, now = n.live === false ? '이 시각에' : '지금';
+  if (b.t === n.t) return ok + `${now} 떠나는 게 가장 빨라요. 앞으로 ${Math.round((d.slots.at(-1).t - n.t) / 36e5)}시간 동안 더 빨라지지 않아요</span></div>`;
+  // 3분 안쪽 차이는 추천하지 않되, 차트의 '가장 빠름'과 말이 어긋나지 않게 그대로 알려 준다
+  if (gain < 3) return ok + `${hm(b.t)} 출발이 ${gain}분 빠르지만, ${now} 떠나도 거의 같아요</span></div>`;
   return `<div class="best"><svg class="ak-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span><b>${hm(b.t)} 출발</b>이 가장 빨라요 · <b>${gain}분</b> 덜 걸려요<br>${dur(b.min)} · 도착 ${hm(b.t + b.min * 6e4)}</span></div>`;
 }
 /* 전기·수소차 고속도로 통행료 감면율 (한국도로공사, 2025년 3년 연장 발표): 2025년 40% → 2026년 30% → 2027년 20%, 2027년 말 종료.
@@ -870,11 +873,14 @@ function hourTicks(d, pct) {
   for (let t = Math.ceil(t0 / 36e5) * 36e5; t <= tN; t += 36e5) { const p = pct(t); if (p > 10 && p < 96) out.push(`<span style="left:${p.toFixed(1)}%">${hm(t).slice(0, 2)}시</span>`); }
   return out.join('');
 }
+// 다른 길: 출발 시각들 대부분이 쓰는 길(거리 가운데값)과 8% 넘게 다르면
+const mainKm = d => { const k = d.slots.map(x => x.km).filter(Boolean).sort((a, b) => a - b); return k.length ? k[Math.floor(k.length / 2)] : 0; };
+const isAlt = (d, x) => { const m = mainKm(d); return !!(x.km && m && Math.abs(x.km - m) / m > .08); };
 function pickLine(d) {
   const x = S.sel != null && d.slots[S.sel]; if (!x) return '';
   const diff = x.min - d.slots[0].min;
-  const n = d.slots[0], other = x.km && n.km && Math.abs(x.km - n.km) / n.km > .08;
-  return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>${x.km ? `<br><span class="mut">${x.km}km${other ? ` · 지금 길(${n.km}km)과 다른 길로 계산됐어요` : ''}</span>` : ''}`;
+  const other = isAlt(d, x);
+  return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>${x.km ? `<br><span class="mut">${x.km}km${other ? ` · 다른 시각들(${mainKm(d)}km)과 다른 길로 계산됐어요` : ''}</span>` : ''}`;
 }
 /* ── 길 지도: 카카오 지도(JS 키가 있으면) 위에 막힘 정도 색으로 길을 그린다. 없거나 못 불러오면 그림 지도로 ── */
 const TS = { 1: ['정체', '#e5484d'], 2: ['지체', '#f07a32'], 3: ['서행', '#e9b10c'], 4: ['원활', '#30a46c'], 6: ['사고', '#8e4ec6'], 0: ['정보 없음', '#9aa3b2'] };
@@ -1000,7 +1006,7 @@ function nowA(d) {
   const yp = v => ((v - lo) / (hi - lo) * 100).toFixed(1), ticks = []; for (let v = lo; v <= hi; v += st) ticks.push(v);
   const iMx = s.findIndex(x => x.min === max), iMn = s.findIndex(x => x.min === min), N = s.length;
   const tag = (i, cls, txt) => `<em class="${cls}${i < 3 ? ' l' : i > N - 4 ? ' r' : ''}">${txt}</em>`;
-  const alt = x => x.km && n.km && Math.abs(x.km - n.km) / n.km > .08, anyAlt = s.some(alt);
+  const alt = x => isAlt(d, x), anyAlt = s.some(alt);
   const bars = s.map((x, i) => `<button type="button" data-sel="${i}" class="${i === 0 ? 'now' : ''}${x === b && i ? ' best' : ''}${alt(x) ? ' alt' : ''}${S.sel === i ? ' sel' : ''}" style="height:${yp(x.min)}%" aria-label="${hm(x.t)} 출발 ${dur(x.min)}">${i === iMx ? tag(i, 'mx', dur(x.min)) : i === iMn ? tag(i, 'mn', dur(x.min)) : ''}</button>`).join('');
   const chart = `<div class="bch" data-noswipe><div class="ya">${ticks.map(v => `<span style="top:${100 - yp(v)}%">${v}분</span>`).join('')}</div>
     <div class="pl">${ticks.map(v => `<i class="gl" style="top:${100 - yp(v)}%"></i>`).join('')}<div class="bars">${bars}</div></div></div>`;
