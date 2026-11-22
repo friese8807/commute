@@ -221,7 +221,7 @@ html{background:var(--solid)}
 .mapw .ov button.on{background:var(--accent);color:var(--on-accent)}
 .map .why2{position:absolute;left:8px;bottom:6px;font-size:10.5px;color:var(--muted)}
 .tbar{position:relative;display:flex;align-items:center;margin:20px 14px 4px;height:26px}
-.tbar .cur{position:absolute;top:-2px;width:0;height:0;margin-left:-7px;border:7px solid transparent;border-top:9px solid var(--ink);border-bottom:0;z-index:2}
+.tbar .cur{position:absolute;bottom:13px;transform:translateX(-50%);z-index:2;line-height:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
 .tbar .tr{cursor:pointer;flex:1;display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--line);box-shadow:0 0 0 3px var(--solid),0 1px 6px 3px rgba(0,0,0,.12)}
 .tbar .tr i{display:block;height:100%;min-width:2px}
 .tbar .pt{position:absolute;top:50%;width:28px;height:28px;margin-top:-14px;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
@@ -593,7 +593,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795309621';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795309730';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -862,11 +862,14 @@ function trafficBar(d) {
   if (jx != null) jx = Math.min(88, Math.max(12, jx));
   return `<div class="tbar" role="img" aria-label="길 전체 막힘 정도"><span class="pt a">${pinHtml(nm[0], 28)}</span>
     <div class="tr" title="눌러서 지도에서 보기">${P.map(x => `<i style="flex:${x.d};background:${tsOf(x.s)[1]}"></i>`).join('')}</div>
-    ${S.focus?.pos != null ? `<span class="cur" style="left:${S.focus.pos.toFixed(1)}%"></span>` : ''}
+    ${S.focus?.pos != null ? `<span class="cur" style="left:${S.focus.pos.toFixed(1)}%">${CAR}</span>` : ''}
     <span class="pt b">${pinHtml(nm[1], 28)}</span>
     ${jx != null ? `<span class="jm" style="left:${jx.toFixed(1)}%;color:${tsOf(j.s)[1]}">${esc(j.n)} ${tsOf(j.s)[0]}</span>` : ''}</div>
     <div class="tbx"><b>${nm[0]}</b><span class="num">${d.dist.toFixed(1)}km</span><b>${nm[1]}</b></div>`;
 }
+const CAR = `<svg viewBox="0 0 48 22" width="40" height="18" aria-label="내 차"><path d="M3 15.5c0-2.4 1.2-3.6 3.6-4.2l7.2-1.6c3-2.8 6.8-4.6 11.6-4.6 4.4 0 8.2 1.6 11.6 4.8l5.2 1c2 .4 3 1.6 3 3.6v1.4c0 1-.8 1.8-1.8 1.8H4.8c-1 0-1.8-.8-1.8-1.8z" fill="#fff" stroke="#1d2733" stroke-width="1.3" stroke-linejoin="round"/>
+  <path d="M15.6 10.1c2.6-2.3 5.8-3.4 9.6-3.4 3.4 0 6.4 1.1 9.2 3.4z" fill="#2b3644"/><path d="M25.4 6.8v3.3" stroke="#fff" stroke-width="1"/>
+  <circle cx="12" cy="17.4" r="3.4" fill="#1d2733"/><circle cx="12" cy="17.4" r="1.5" fill="#c9d1da"/><circle cx="37.5" cy="17.4" r="3.4" fill="#1d2733"/><circle cx="37.5" cy="17.4" r="1.5" fill="#c9d1da"/></svg>`;
 const mapBox = h => `<div class="mapw" data-noswipe><div class="map" data-map data-h="${h}" style="height:${h}px"></div><div class="ov"></div></div>`;
 // 막히는 곳: 같은 도로의 정체·지체 구간을 모아 가는 순서대로 (처음 만나는 곳이 위)
 function jamsOf(d) {
