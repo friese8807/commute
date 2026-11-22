@@ -191,12 +191,20 @@ html{background:var(--solid)}
 .bch .ya{position:relative}
 .bch .ya span{position:absolute;right:6px;transform:translateY(-50%);font-size:10.5px;color:var(--muted);white-space:nowrap}
 .bch .pl{position:relative;height:140px}
-.bch .gl{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+.bch .gl{position:absolute;left:0;right:0;border-top:1px solid var(--line)}
 .bars{position:absolute;inset:0;display:flex;align-items:flex-end;gap:3px}
 .bars button{flex:1;border:0;padding:0;background:var(--bar);border-radius:5px 5px 2px 2px;cursor:pointer;position:relative;min-width:0}
 .bars button.best{background:var(--best)}
 .bars button.now{background:var(--now)}
-.bars button.alt{outline:1.5px dashed var(--ink);outline-offset:-1.5px}
+/* C 시간표 */
+.tt2{list-style:none;margin:0;padding:0}
+.tt2 li{display:grid;grid-template-columns:52px 1fr auto 66px;align-items:center;gap:8px;padding:11px 6px;border-top:1px solid var(--line);font-size:15px;border-radius:10px}
+.tt2 li:first-child{border-top:0}
+.tt2 .t{font-weight:700;color:var(--muted)}.tt2 b{font-size:16.5px}.tt2 .r{font-size:13.5px;color:var(--muted)}
+.tt2 em{font-style:normal;font-size:12px;font-weight:700;text-align:right;color:var(--muted)}
+.tt2 li.now{background:color-mix(in srgb,var(--now) 14%,transparent)}.tt2 li.now .t{color:var(--now)}
+.tt2 li.best{background:var(--p-go)}.tt2 li.best em,.tt2 li.best b{color:var(--p-go-ink)}
+.legend.rl{flex-wrap:wrap;gap:4px 12px}
 .bars button.sel{outline:2px solid var(--ink);outline-offset:1px}
 .bars button em{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);z-index:1;font-style:normal;font-size:10.5px;font-weight:700;white-space:nowrap;margin-bottom:2px;color:var(--ink)}
 .bx{position:relative;height:16px;font-size:10.5px;color:var(--muted);margin-left:34px}
@@ -610,7 +618,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795312705';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795314928';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -702,7 +710,7 @@ function demoMin(r, ms) {
 }
 function demoLoad({ route, from, step, hours }) {
   const now = NOW(), t0 = Math.max(now, from || 0), slots = [{ t: t0, min: demoMin(route, t0), live: !from || from <= now }];
-  for (let t = Math.ceil((t0 + 6e4) / (step * 6e4)) * step * 6e4; t <= t0 + hours * 36e5; t += step * 6e4) slots.push({ t, min: demoMin(route, t), km: DEMO_INFO[route].dist });
+  for (let t = Math.ceil((t0 + 6e4) / (step * 6e4)) * step * 6e4; t <= t0 + hours * 36e5; t += step * 6e4) slots.push({ t, min: demoMin(route, t), km: route === 'w2h' && new Date(t + 9 * 36e5).getUTCHours() === 19 ? +(DEMO_INFO[route].dist + 6.3).toFixed(1) : DEMO_INFO[route].dist });
   slots[0].km = DEMO_INFO[route].dist;
   const I = DEMO_INFO[route];
   return { route, to: route === 'here' ? destNow() : undefined, slots, dist: I.dist, toll: I.toll, roads: I.roads, path: demoPath(route, t0), at: now };
@@ -873,14 +881,10 @@ function hourTicks(d, pct) {
   for (let t = Math.ceil(t0 / 36e5) * 36e5; t <= tN; t += 36e5) { const p = pct(t); if (p > 10 && p < 96) out.push(`<span style="left:${p.toFixed(1)}%">${hm(t).slice(0, 2)}시</span>`); }
   return out.join('');
 }
-// 다른 길: 출발 시각들 대부분이 쓰는 길(거리 가운데값)과 8% 넘게 다르면
-const mainKm = d => { const k = d.slots.map(x => x.km).filter(Boolean).sort((a, b) => a - b); return k.length ? k[Math.floor(k.length / 2)] : 0; };
-const isAlt = (d, x) => { const m = mainKm(d); return !!(x.km && m && Math.abs(x.km - m) / m > .08); };
 function pickLine(d) {
   const x = S.sel != null && d.slots[S.sel]; if (!x) return '';
   const diff = x.min - d.slots[0].min;
-  const other = isAlt(d, x);
-  return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>${x.km ? `<br><span class="mut">${x.km}km${other ? ` · 다른 시각들(${mainKm(d)}km)과 다른 길로 계산됐어요` : ''}</span>` : ''}`;
+  return `<b>${hm(x.t)} 출발</b> → ${hm(x.t + x.min * 6e4)} 도착 · ${dur(x.min)} <span class="mut">(${diff === 0 ? '지금과 같아요' : diff > 0 ? diff + '분 더' : -diff + '분 덜'})</span>${x.km && routeGroups(d).length > 1 ? `<br><span class="mut">${(x.g || 0) === 0 ? '지금 길' : '다른 길'} ${x.km}km</span>` : ''}`;
 }
 /* ── 길 지도: 카카오 지도(JS 키가 있으면) 위에 막힘 정도 색으로 길을 그린다. 없거나 못 불러오면 그림 지도로 ── */
 const TS = { 1: ['정체', '#e5484d'], 2: ['지체', '#f07a32'], 3: ['서행', '#e9b10c'], 4: ['원활', '#30a46c'], 6: ['사고', '#8e4ec6'], 0: ['정보 없음', '#9aa3b2'] };
@@ -998,6 +1002,13 @@ async function drawMaps() {
     if (!ok) el.nextElementSibling.innerHTML = focusBtn() + `<button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`; });
 }
 
+// 출발 시각별: 길별 색 막대(B) + 그 아래 30분 시간표(C) — 사용자가 둘 다 고름
+const RCOL = ['#a9cbe8', '#c3b3ee', '#f3c49b'];
+// 거리가 8% 안쪽이면 같은 길로 묶는다 (지금 길이 첫 묶음)
+function routeGroups(d) {
+  const G = []; d.slots.forEach(x => { if (!x.km) return; let g = G.find(g => Math.abs(g.km - x.km) / g.km <= .08); if (!g) G.push(g = { km: x.km, n: 0 }); g.n++; x.g = G.indexOf(g); });
+  return G;
+}
 /* 큰 숫자 + 출발 시각별 막대 (사용자가 고른 A안) */
 function nowA(d) {
   const s = d.slots, n = s[0], b = bestOf(s), max = Math.max(...s.map(x => x.min)), min = Math.min(...s.map(x => x.min));
@@ -1006,8 +1017,8 @@ function nowA(d) {
   const yp = v => ((v - lo) / (hi - lo) * 100).toFixed(1), ticks = []; for (let v = lo; v <= hi; v += st) ticks.push(v);
   const iMx = s.findIndex(x => x.min === max), iMn = s.findIndex(x => x.min === min), N = s.length;
   const tag = (i, cls, txt) => `<em class="${cls}${i < 3 ? ' l' : i > N - 4 ? ' r' : ''}">${txt}</em>`;
-  const alt = x => isAlt(d, x), anyAlt = s.some(alt);
-  const bars = s.map((x, i) => `<button type="button" data-sel="${i}" class="${i === 0 ? 'now' : ''}${x === b && i ? ' best' : ''}${alt(x) ? ' alt' : ''}${S.sel === i ? ' sel' : ''}" style="height:${yp(x.min)}%" aria-label="${hm(x.t)} 출발 ${dur(x.min)}">${i === iMx ? tag(i, 'mx', dur(x.min)) : i === iMn ? tag(i, 'mn', dur(x.min)) : ''}</button>`).join('');
+  const RG = routeGroups(d), byRoute = RG.length > 1;
+  const bars = s.map((x, i) => `<button type="button" data-sel="${i}" class="${byRoute ? '' : (i === 0 ? 'now' : '') + (x === b && i ? ' best' : '')}${S.sel === i ? ' sel' : ''}" style="height:${yp(x.min)}%${byRoute ? ';background:' + RCOL[Math.min(2, x.g || 0)] : ''}" aria-label="${hm(x.t)} 출발 ${dur(x.min)}">${i === iMx ? tag(i, 'mx', dur(x.min)) : i === iMn ? tag(i, 'mn', dur(x.min)) : ''}</button>`).join('');
   const chart = `<div class="bch" data-noswipe><div class="ya">${ticks.map(v => `<span style="top:${100 - yp(v)}%">${v}분</span>`).join('')}</div>
     <div class="pl">${ticks.map(v => `<i class="gl" style="top:${100 - yp(v)}%"></i>`).join('')}<div class="bars">${bars}</div></div></div>`;
   // 막대 칸은 같은 너비라 시각 눈금도 칸 순서로 맞춘다 (첫 칸만 '지금'이라 간격이 조금 짧다)
@@ -1015,9 +1026,17 @@ function nowA(d) {
   const hero = `<div class="card hero"><div class="lb">${label0(d)}</div><div class="big num">${durBig(n.min)}</div>
     <div class="arr num"><span>도착</span> ${hm(n.t + n.min * 6e4)}</div>${bestLine(d)}</div>`;
   const barsIn = `${chart}<div class="bx"><span style="left:0;transform:none">${n.live === false ? hm(n.t) : '지금'}</span>${hourTicks(d, pct)}</div>
-    <div class="legend"><span><i style="background:var(--now)"></i>지금</span><span><i style="background:var(--best)"></i>가장 빠름</span><span><i style="background:var(--bar)"></i>그 밖</span>${anyAlt ? '<span><i style="background:none;border:1.5px dashed var(--ink)"></i>다른 길</span>' : ''}</div>
+    ${byRoute ? `<div class="legend rl">${RG.slice(0, 3).map((g, k) => `<span><i style="background:${RCOL[k]}"></i>${k === 0 ? '지금 길' : '다른 길'} ${g.km}km${k === 0 && d.roads?.length ? ' (' + esc(d.roads.slice(0, 2).join('·')) + ')' : ''}</span>`).join('')}</div>`
+      : `<div class="legend"><span><i style="background:var(--now)"></i>지금</span><span><i style="background:var(--best)"></i>가장 빠름</span><span><i style="background:var(--bar)"></i>그 밖</span></div>`}
     <p class="pick" id="pick">${pickLine(d)}</p>`;
-  const barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
+  let barsCard = `<div class="card"><h2>출발 시각별 걸리는 시간</h2>${barsIn}</div>`;
+  {
+    // 30분마다 한 줄 + 지금 + 가장 빠른 시각
+    const rows = s.filter((x, i) => i === 0 || x === b || new Date(x.t + 9 * 36e5).getUTCMinutes() % 30 === 0);
+    barsCard += `<div class="card"><h2>30분마다 언제 떠나면</h2><ul class="tt2">${rows.map(x => { const df = x.min - n.min;
+      return `<li class="${x === n ? 'now' : ''}${x === b ? ' best' : ''}"><span class="t num">${x === n && n.live !== false ? '지금' : hm(x.t)}</span><b class="num">${dur(x.min)}</b>
+        <span class="r num">${hm(x.t + x.min * 6e4)} 도착</span><em>${x === b ? '가장 빠름' : x === n ? '' : df > 0 ? '+' + df + '분' : df < 0 ? '−' + (-df) + '분' : '같음'}</em></li>`; }).join('')}</ul></div>`;
+  }
   // 사용자가 고른 B안: 길 지도(막힘 색)를 맨 위에, 그 아래 걸리는 시간·출발 시각별 막대
   return `<div class="card" style="padding:8px">${mapBox(230)}${trafficBar(d)}${tleg()}${jamBox(d)}${incBox(d)}</div>${hero}${barsCard}<div class="card">${facts(d)}</div>`;
 }
