@@ -260,7 +260,8 @@ html{background:var(--solid)}
 .jb .jt{grid-column:1/-1;font-size:11.5px;color:var(--muted)}
 .jb.inc{margin-top:8px}
 .xp{font-style:normal;font-size:11.5px;font-weight:800;border-radius:6px;padding:2px 8px;white-space:nowrap}
-.hwf{flex-wrap:wrap;margin:10px 0 12px}
+.hwf{flex-wrap:wrap;margin:6px 0 8px}
+.hwtop{position:sticky;top:-4px;z-index:3;background:var(--bg);margin:0 -16px 10px;padding:4px 16px 10px;box-shadow:0 8px 10px -10px rgba(0,0,0,.25)}
 .hwc{padding:6px 14px}
 .hwc .hh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0 6px}
 .hwc .hh b{font-size:15.5px;display:flex;align-items:center;gap:6px}.hwc .hh .dot{width:10px;height:10px;border-radius:50%}
@@ -627,7 +628,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795389625';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795389930';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -1050,8 +1051,11 @@ function hwKakao(el) {
 }
 function hwPick(i, from) {
   S.hwSel = S.hwSel === i && from === 'list' ? null : i; tabs.redraw();
-  requestAnimationFrame(() => { const t = from === 'map' ? document.querySelector(`[data-hwrow="${i}"]`) : document.querySelector('[data-hwmap]');
-    t?.scrollIntoView({ block: from === 'map' ? 'center' : 'start', behavior: 'smooth' }); });
+  if (from !== 'map') return;
+  requestAnimationFrame(() => { const row = document.querySelector(`[data-hwrow="${i}"]`), sc = document.getElementById('sc'), top = document.querySelector('.hwtop');
+    if (!row || !sc) return;
+    const y = row.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - (top ? top.offsetHeight : 0) - 10;
+    sc.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); });
 }
 let kakaoP = null;
 function loadKakao(key) {
@@ -1166,15 +1170,16 @@ function viewHw() {
   const foot = `<p class="note">한국도로공사 실시간 문자 안내${S.ex.seoul ? ' · 서울시 실시간 돌발 정보' : ''} · ${AppKit.hhmm(new Date(S.ex.at))} 받음${S.ex.test ? ' · 도로공사는 시험용 키' : ''}${S.ex.seoulErr ? `<br>서울시 자료를 받지 못했어요: ${esc(S.ex.seoulErr)}` : !S.ex.seoul ? '<br>서울시 키를 넣으면 올림픽대로·서부간선도로 같은 서울 도로 사고·공사도 보여요' : ''}</p>`;
   const empty = '<div class="card"><div class="ak-empty">지금은 알릴 상황이 없어요</div></div>';
   S.hwList = L;
-  const map = `<div class="card" style="padding:8px"><div class="mapw" data-noswipe><div class="map" data-hwmap data-h="240" style="height:240px"></div><div class="ov"></div></div></div>`;
+  const map = `<div class="card" style="padding:8px;margin-bottom:0"><div class="mapw" data-noswipe><div class="map" data-hwmap data-h="220" style="height:220px"></div><div class="ov"></div></div></div>`;
   if (!L.length) return chips + empty + foot;
+  const top = `<div class="hwtop">${chips}${map}</div>`;
   const G = ['acc', 'work', 'jam', 'wx', 'etc'];   // 한 노선 안에서는 급한 것부터
   // 사용자가 고른 B안: 노선별 묶음
   const roads = {}; L.forEach(x => (roads[x.road] = roads[x.road] || []).push(x));
   const R = Object.entries(roads).sort((a, b) => b[1].length - a[1].length); R.forEach(([, xs]) => xs.sort((a, b) => G.indexOf(grp(a)) - G.indexOf(grp(b))));
   // 목록에 보이는 순서대로 1, 2, 3… (위치가 있는 것만) — 지도 번호와 같다
   let k = 0; S.hwNum = new Map(); R.forEach(([, xs]) => xs.forEach(x => { if (x.lat != null) S.hwNum.set(x, ++k); }));
-  return chips + map + R.map(([r, xs]) => `<div class="card hwc"><div class="hh"><b>${esc(r)}</b>
+  return top + R.map(([r, xs]) => `<div class="card hwc"><div class="hh"><b>${esc(r)}</b>
       <span>${G.filter(g => xs.some(x => grp(x) === g)).map(g => `<i style="background:${EXL[g][1]};color:${EXL[g][2]}">${EXL[g][0]} ${xs.filter(x => grp(x) === g).length}</i>`).join('')}</span></div>
       ${xs.map(hwRow).join('')}</div>`).join('') + foot;
 }
