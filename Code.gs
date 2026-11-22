@@ -152,12 +152,17 @@ function load_(b) {
   // 첫 칸은 지금(실시간 길찾기) 또는 고른 시각, 나머지는 간격에 맞춘 시각 — 시각이 고정돼야 서버 기억(캐시)을 다시 쓸 수 있다
   const ts = [t0];
   for (let t = Math.ceil((t0 + 6e4) / (step * 6e4)) * step * 6e4; t <= t0 + hours * 36e5 && ts.length < 26; t += step * 6e4) ts.push(t);
-  const rs = directions_(ckey, o, d, ts.map((t, i) => ({ t: t, live: i === 0 && live, full: i === 0 })));
+  // '지금'은 실시간 길찾기, 나머지는 미래 운행 정보(통계 예측)라 바로 비교하면 첫 칸만 튄다 →
+  // 같은 '지금' 시각의 예측을 하나 더 받아 실시간÷예측 비율을 구하고, 가까운 시각일수록 그 비율로 맞춘다(90분이면 약 1/3)
+  const fNow = live ? Math.ceil((now + 6e4) / 6e4) * 6e4 : 0, list = ts.map((t, i) => ({ t: t, live: i === 0 && live, full: i === 0 }));
+  if (fNow) list.push({ t: fNow, live: false, full: false });
+  const rs = directions_(ckey, o, d, list), fr = fNow ? rs.pop() : null;
+  const k = fr && rs[0] && fr.sec ? Math.min(1.8, Math.max(.6, rs[0].sec / fr.sec)) : 1;
   const first = rs[0];
   if (!first) throw new Error('카카오 길찾기 결과를 받지 못했어요. 잠시 후 다시 해주세요');
-  const slots = rs.map((r, i) => r && { t: ts[i], min: Math.round(r.sec / 60) }).filter(Boolean);
+  const slots = rs.map((r, i) => r && { t: ts[i], min: Math.round(r.sec * (i ? 1 + (k - 1) * Math.exp(-(ts[i] - now) / 54e5) : 1) / 60), raw: Math.round(r.sec / 60), km: Math.round(r.dist / 100) / 10 }).filter(Boolean);
   slots[0].live = live;
-  return { route: route, to: to, slots: slots, dist: Math.round(first.dist / 100) / 10, toll: first.toll, roads: first.roads || [], path: first.path || [], ev: c.ev !== false, at: now };
+  return { route: route, to: to, calib: Math.round(k * 100) / 100, slots: slots, dist: Math.round(first.dist / 100) / 10, toll: first.toll, roads: first.roads || [], path: first.path || [], ev: c.ev !== false, at: now };
 }
 // 여러 출발 시각을 한꺼번에(fetchAll) 묻는다. 받은 값은 지금=3분, 미래=10분 기억한다
 function directions_(route, o, d, list) {
