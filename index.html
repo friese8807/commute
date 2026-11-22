@@ -228,6 +228,11 @@ html{background:var(--solid)}
 .mapw .ov{position:absolute;right:8px;top:8px;display:flex;gap:6px;z-index:5}
 .mapw .ov button{border:0;background:var(--solid);color:var(--ink);font:inherit;font-size:12px;font-weight:700;border-radius:10px;padding:6px 10px;box-shadow:0 1px 4px rgba(0,0,0,.18);min-height:32px}
 .mapw .ov button.on{background:var(--accent);color:var(--on-accent)}
+.pop{position:relative;font-size:13.5px;line-height:1.45;word-break:keep-all;overflow-wrap:break-word;color:var(--ink)}
+.pop .px{position:absolute;right:-6px;top:-8px;border:0;background:none;color:var(--muted);font-size:22px;width:36px;height:36px;cursor:pointer}
+.pop .pt1{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-right:28px}.pop .pt1 b{font-size:15px}
+.pop .pt2{font-size:12.5px;color:var(--muted);margin-top:3px}.pop p{margin:6px 0 0}.pop .pt3{font-size:11.5px;color:var(--muted);margin-top:6px}
+#sheetBody .pop{padding:4px 2px 8px;font-size:15px}
 .map .why2{position:absolute;left:8px;bottom:6px;font-size:10.5px;color:var(--muted)}
 .tbar{position:relative;display:flex;align-items:center;margin:20px 14px 4px;height:26px}
 .tbar .cur{position:absolute;bottom:13px;transform:translateX(-50%);z-index:2;line-height:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
@@ -314,6 +319,7 @@ html{background:var(--solid)}
   <button type="button" data-tab="set"><span class="i"><svg class="ak-ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg></span>설정</button>
 </nav>
 
+<div class="ak-sheet" id="sheet"><div class="ak-grab"></div><div class="body" id="sheetBody"></div></div>
 <script>
 /* ═══ app-kit.js — 모바일 웹앱 공통 동작 ═══
    AppKit.fixViewport({gap})       화면 높이 보정 (아이폰 홈 화면 앱 위아래 공백 제거). 탭바가 화면 아래로 잘리면 {gap:false}
@@ -618,7 +624,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795314928';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795323226';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -960,10 +966,71 @@ function svgMap(el, d) {
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳" style="overflow:hidden">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
     ${d.path.map((x, xi) => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="${F.length && isFoc(x, xi) ? 9 : 5}"/>`).join('')}
     ${pinSvg(nm[0], +X(a), +Y(a), 12)}${pinSvg(nm[1], +X(b), +Y(b), 12)}
-    ${incOf(d).map(x => `<g transform="translate(${X([x.lon, x.lat])} ${Y([x.lon, x.lat])})"><circle r="8" fill="${EXL[grp(x)][1]}" stroke="#fff" stroke-width="2"/><text y="4" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">!</text></g>`).join('')}
+    ${incOf(d).map(x => incSvg(x, X, Y, popIdx(x))).join('')}
     ${S.focus?.at ? `<g transform="translate(${+X(S.focus.at.p) - 22} ${+Y(S.focus.at.p) - 18})" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${carSvg(S.focus.at.left, 44)}</g>` : ''}
     <text x="${+X(a) + 17}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 17}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text></svg>
     <span class="why2">${F.length ? `<b style="color:var(--ink)">${esc(focusName(d))}</b> 구간을 보는 중` : S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
+}
+/* ── 지도 위 사고·공사: 짧은 이름표 + 누르면 아래에서 올라오는 시트에 자세히 (사용자가 고른 B안) ── */
+function incShort(x) {
+  const L = (x.lanes || []).map((v, i) => v ? i + 1 : 0).filter(Boolean), t = x.text || '';
+  const w = /전면\s?통제/.test(t) ? '전면통제' : L.length ? L.join('·') + '차로' : x.sh || /갓길/.test(t) ? '갓길' : x.len ? x.len + 'km' : '';
+  return exLabel(x) + (w ? ' · ' + w : '');
+}
+const popIdx = x => (S.ex?.items || []).indexOf(x);
+function popHtml(x) {
+  return `<div class="pop"><button type="button" class="px" data-popx aria-label="닫기">×</button>
+    <div class="pt1">${exPill(x)}<b>${esc(x.road)}</b> <span class="mut">${esc(x.dir)}</span></div>
+    ${x.at && x.at !== '/' ? `<div class="pt2">${esc(x.at)}</div>` : ''}${x.text ? `<p>${esc(x.text)}</p>` : ''}${x.len ? `<p><b>${x.len}km</b> 정체</p>` : ''}${lanesHtml(x)}
+    <div class="pt3">${esc(x.time)}${x.until ? ' · ' + esc(x.until) + '까지' : ''} · ${esc(x.src || '한국도로공사')}</div></div>`;
+}
+// 그림 지도용 이름표 (점 위에 알약)
+// 많으면(dot) 이름표 없이 색 점만 — 서로 겹쳐 읽을 수 없어서
+function incSvg(x, X, Y, i, dot) {
+  const lb = incShort(x), w = lb.length * 10.5 + 14, px = +X([x.lon, x.lat]), py = +Y([x.lon, x.lat]), c = EXL[grp(x)];
+  if (dot) return `<g data-pop="${i}" style="cursor:pointer" transform="translate(${px} ${py})"><circle r="10" fill="transparent"/><circle r="7" fill="${c[1]}" stroke="#fff" stroke-width="2"/><text y="3.5" text-anchor="middle" font-size="10" font-weight="900" fill="${c[2]}">!</text></g>`;
+  return `<g data-pop="${i}" style="cursor:pointer" transform="translate(${px} ${py})"><circle r="5" fill="${c[1]}" stroke="#fff" stroke-width="2"/>
+    <rect x="${-w / 2}" y="-30" width="${w}" height="20" rx="10" fill="${c[1]}" stroke="#fff" stroke-width="1.5"/><text y="-16" text-anchor="middle" font-size="11" font-weight="800" fill="${c[2]}">${esc(lb)}</text></g>`;
+}
+// 카카오 지도용 이름표: 카카오가 지도 안 누름을 가져가므로 요소에 직접 듣는다
+function incOverlay(km, map, x, i, dot) {
+  const c = EXL[grp(x)], el = document.createElement('div');
+  el.style.cssText = dot ? `background:${c[1]};color:${c[2]};width:20px;height:20px;line-height:16px;text-align:center;font-size:11px;font-weight:900;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer` : `background:${c[1]};color:${c[2]};font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:11px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer;white-space:nowrap`;
+  el.textContent = dot ? '!' : incShort(x);
+  ['mousedown', 'touchstart', 'pointerdown'].forEach(t => el.addEventListener(t, e => e.stopPropagation(), { passive: true }));
+  el.addEventListener('click', e => { e.stopPropagation(); openPop(i, map._kind); });
+  new km.CustomOverlay({ map, position: new km.LatLng(x.lat, x.lon), yAnchor: 1.3, zIndex: 4, content: el, clickable: true });
+}
+function openPop(i, kind) {
+  const x = S.ex?.items[i]; if (!x) return;
+  S.pop = { i, kind };
+  document.getElementById('sheetBody').innerHTML = popHtml(x); sheet.open();
+}
+const closePop = () => { S.pop = null; sheet.close(); };
+/* ── 고속도로 탭 지도: 지금 보는 목록(내 길 근처·수도권·전국)의 사고·공사, 내 길은 옅게 ── */
+function hwSvg(el) {
+  const L = (S.hwList || []).filter(x => x.lat != null), R = (S.data?.path || []).flatMap(x => x.p), pts = L.map(x => [x.lon, x.lat]).concat(L.length ? [] : R);
+  if (!pts.length) { el.innerHTML = '<div class="ak-empty">지도에 표시할 곳이 없어요</div>'; return; }
+  const W = el.clientWidth || 340, H = el.clientHeight || 240, pad = 34, k = Math.cos(37.4 * Math.PI / 180);
+  const xs = pts.map(p => p[0] * k), ys = pts.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const sc = Math.min((W - pad * 2) / Math.max(.03, x1 - x0), (H - pad * 2) / Math.max(.03, y1 - y0)), ox = (W - (x1 - x0) * sc) / 2, oy = (H - (y1 - y0) * sc) / 2 + 8;
+  const X = p => (ox + (p[0] * k - x0) * sc).toFixed(1), Y = p => (oy + (y1 - p[1]) * sc).toFixed(1);
+  const grid = []; for (let g = 40; g < W; g += 40) grid.push(`<line x1="${g}" x2="${g}" y1="0" y2="${H}" class="gr"/>`); for (let g = 40; g < H; g += 40) grid.push(`<line y1="${g}" y2="${g}" x1="0" x2="${W}" class="gr"/>`);
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="고속도로 사고·공사 지도" style="overflow:hidden">${grid.join('')}
+    ${R.length ? `<path d="${R.map((q, i) => (i ? 'L' : 'M') + X(q) + ',' + Y(q)).join('')}" fill="none" stroke="var(--accent)" stroke-opacity=".45" stroke-width="5" stroke-linecap="round"/>` : ''}
+    ${L.map(x => incSvg(x, X, Y, popIdx(x), L.length > 8)).join('')}</svg>
+    <span class="why2">${S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 점만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'} · 좌표 있는 ${L.length}건</span>`;
+}
+function hwKakao(el) {
+  const km = kakao.maps, L = (S.hwList || []).filter(x => x.lat != null), R = (S.data?.path || []).flatMap(x => x.p); el.innerHTML = '';
+  const map = new km.Map(el, { center: new km.LatLng(37.45, 127.0), level: 10 }); map._kind = 'hw';
+  if (R.length) new km.Polyline({ map, path: R.map(p => new km.LatLng(p[1], p[0])), strokeWeight: 5, strokeColor: '#4f93c9', strokeOpacity: .5 });
+  const bd = new km.LatLngBounds(); L.forEach(x => bd.extend(new km.LatLng(x.lat, x.lon))); if (!L.length) R.forEach(p => bd.extend(new km.LatLng(p[1], p[0])));
+  if (L.length || R.length) map.setBounds(bd, 40, 40, 40, 40);
+  L.forEach(x => incOverlay(km, map, x, popIdx(x), L.length > 8));
+  if (LS.get('traffic', true)) map.addOverlayMapTypeId(km.MapTypeId.TRAFFIC);
+  el.nextElementSibling.innerHTML = `<button type="button" data-traffic class="${LS.get('traffic', true) ? 'on' : ''}">주변 교통</button><button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`;
+  el._map = map;
 }
 let kakaoP = null;
 function loadKakao(key) {
@@ -984,8 +1051,7 @@ function kakaoMap(el, d) {
   const nm = placeNames(d);
   [[P[0], nm[0]], [P.at(-1), nm[1]]].forEach(([p, t]) => new km.CustomOverlay({ map, position: new km.LatLng(p[1], p[0]), yAnchor: .5, xAnchor: .5,
     content: `<div style="display:flex;align-items:center;gap:3px">${pinHtml(t, 28)}<b style="background:#0d2436;color:#fff;font-size:12px;padding:2px 7px;border-radius:8px">${t}</b></div>` }));
-  incOf(d).forEach(x => new km.CustomOverlay({ map, position: new km.LatLng(x.lat, x.lon), zIndex: 4,
-    content: `<div style="background:${EXL[grp(x)][1]};color:#fff;font-size:11px;font-weight:800;padding:2px 7px;border-radius:9px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">! ${esc(exLabel(x))}</div>` }));
+  map._kind = 'route'; incOf(d).forEach(x => incOverlay(km, map, x, popIdx(x)));
   if (S.focus?.at) new km.CustomOverlay({ map, position: new km.LatLng(S.focus.at.p[1], S.focus.at.p[0]), yAnchor: .85, zIndex: 5,
     content: `<div style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${carSvg(S.focus.at.left, 44)}</div>` });
   const F = focusPts(d); if (F.length > 1) { const fb = new km.LatLngBounds(); F.forEach(p => fb.extend(new km.LatLng(p[1], p[0]))); map.setBounds(fb, 40, 40, 40, 40); } else map.setBounds(bounds, 30, 30, 30, 30);
@@ -996,8 +1062,12 @@ function kakaoMap(el, d) {
 const focusBtn = () => S.focus ? '<button type="button" data-focus="">전체 보기</button>' : '';
 // 화면을 그린 뒤 [data-map] 칸마다 지도를 채운다
 async function drawMaps() {
-  const els = [...document.querySelectorAll('[data-map]')], d = S.data; if (!els.length || !d?.path?.length) return;
+  const hw = [...document.querySelectorAll('[data-hwmap]')], els = [...document.querySelectorAll('[data-map]')], d = S.data;
+  if (!hw.length && (!els.length || !d?.path?.length)) return;
   const ok = await loadKakao(S.cfg?.jsKey);
+  hw.forEach(el => { if (!el.isConnected) return; if (ok) { try { hwKakao(el); return; } catch (e) {} } hwSvg(el);
+    el.nextElementSibling.innerHTML = `<button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`; });
+  if (!d?.path?.length) return;
   els.forEach(el => { if (!el.isConnected) return; if (ok) { try { kakaoMap(el, d); return; } catch (e) {} } svgMap(el, d);
     if (!ok) el.nextElementSibling.innerHTML = focusBtn() + `<button type="button" data-bigmap>${el.classList.contains('big') ? '작게' : '크게'}</button>`; });
 }
@@ -1074,11 +1144,13 @@ function viewHw() {
   const chips = `<div class="base hwf">${hasRoute ? `<button type="button" data-hwf="route" class="${f === 'route' ? 'on' : ''}">내 길 근처 ${cnt('route')}</button>` : ''}<button type="button" data-hwf="metro" class="${f === 'metro' ? 'on' : ''}">수도권 ${cnt('metro')}</button><button type="button" data-hwf="all" class="${f === 'all' ? 'on' : ''}">전국 ${cnt('all')}</button></div>`;
   const foot = `<p class="note">한국도로공사 실시간 문자 안내${S.ex.seoul ? ' · 서울시 실시간 돌발 정보' : ''} · ${AppKit.hhmm(new Date(S.ex.at))} 받음${S.ex.test ? ' · 도로공사는 시험용 키' : ''}${S.ex.seoulErr ? `<br>서울시 자료를 받지 못했어요: ${esc(S.ex.seoulErr)}` : !S.ex.seoul ? '<br>서울시 키를 넣으면 올림픽대로·서부간선도로 같은 서울 도로 사고·공사도 보여요' : ''}</p>`;
   const empty = '<div class="card"><div class="ak-empty">지금은 알릴 상황이 없어요</div></div>';
+  S.hwList = L;
+  const map = `<div class="card" style="padding:8px"><div class="mapw" data-noswipe><div class="map" data-hwmap data-h="240" style="height:240px"></div><div class="ov"></div></div></div>`;
   if (!L.length) return chips + empty + foot;
   const G = ['acc', 'work', 'jam', 'wx', 'etc'];   // 한 노선 안에서는 급한 것부터
   // 사용자가 고른 B안: 노선별 묶음
   const roads = {}; L.forEach(x => (roads[x.road] = roads[x.road] || []).push(x));
-  return chips + Object.entries(roads).sort((a, b) => b[1].length - a[1].length).map(([r, xs]) => `<div class="card hwc"><div class="hh"><b>${esc(r)}</b>
+  return chips + map + Object.entries(roads).sort((a, b) => b[1].length - a[1].length).map(([r, xs]) => `<div class="card hwc"><div class="hh"><b>${esc(r)}</b>
       <span>${G.filter(g => xs.some(x => grp(x) === g)).map(g => `<i style="background:${EXL[g][1]};color:${EXL[g][2]}">${EXL[g][0]} ${xs.filter(x => grp(x) === g).length}</i>`).join('')}</span></div>
       ${xs.sort((a, b) => G.indexOf(grp(a)) - G.indexOf(grp(b))).map(hwRow).join('')}</div>`).join('') + foot;
 }
@@ -1157,13 +1229,14 @@ function viewSet() {
 }
 
 /* ── 탭 ── */
+const sheet = AppKit.sheet('#sheet');
 const tabs = AppKit.tabs({
   ids: ['now', 'hw', 'alarm', 'set'],
   render(id) {
     const sc = document.getElementById('sc');
     sc.innerHTML = id === 'now' ? viewNow() : id === 'hw' ? viewHw() : id === 'alarm' ? viewAlarm() : viewSet();
     if (id === 'hw' && !S.ex) loadEx();
-    if (id === 'now') requestAnimationFrame(drawMaps);
+    if (id === 'now' || id === 'hw') requestAnimationFrame(drawMaps);
   },
 });
 
@@ -1185,11 +1258,13 @@ document.addEventListener('click', async e => {
     let at = 0, i = P.findIndex(x => (at += x.d) >= f * tot); if (i < 0) i = P.length - 1;
     S.focus = S.focus?.i === i ? null : { i, pos: f * 100, at: pointAt(S.data, f) }; tabs.redraw();
     document.querySelector('.mapw')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
+  if ((b = q('[data-pop]'))) { const i = +b.dataset.pop, kind = b.closest('[data-hwmap]') ? 'hw' : 'route'; openPop(i, kind); return; }
+  if ((b = q('[data-popx]'))) { closePop(); return; }
   if ((b = q('[data-inc]'))) { const i = +b.dataset.inc, x = incOf(S.data)[i]; S.focus = S.focus?.inc === i || !x ? null : { inc: i, pt: [x.lon, x.lat], name: `${x.road} ${exLabel(x)}` }; tabs.redraw();
     document.querySelector('.mapw')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
   if ((b = q('[data-hwf]'))) { S.hwF = b.dataset.hwf; tabs.redraw(); return; }
   if ((b = q('[data-act="ex"]'))) { S.exErr = null; tabs.redraw(); return loadEx(); }
-  if ((b = q('[data-bigmap]'))) { const m = b.closest('.mapw').querySelector('[data-map]'); m.classList.toggle('big'); m.style.height = m.classList.contains('big') ? '62vh' : m.dataset.h + 'px'; drawMaps(); if (m.classList.contains('big')) m.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+  if ((b = q('[data-bigmap]'))) { const m = b.closest('.mapw').querySelector('[data-map],[data-hwmap]'); m.classList.toggle('big'); m.style.height = m.classList.contains('big') ? '62vh' : m.dataset.h + 'px'; drawMaps(); if (m.classList.contains('big')) m.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
   if ((b = q('[data-traffic]'))) { const on = !LS.get('traffic', true); LS.set('traffic', on); b.classList.toggle('on', on); const m = b.closest('.mapw').querySelector('[data-map]')._map;
     if (m) on ? m.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC) : m.removeOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC); AppKit.toast(on ? '주변 도로 교통도 보여 줘요' : '내 길만 보여 줘요'); return; }
   if ((b = q('[data-ev]'))) { const v = b.dataset.ev === '1'; LS.set('ev', v); if (S.cfg) S.cfg.ev = v; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
