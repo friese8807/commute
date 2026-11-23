@@ -356,11 +356,38 @@ function tm2ll_(x, y) {
   return [Math.round(lon * 180 / Math.PI * 1e6) / 1e6, Math.round(lat * 180 / Math.PI * 1e6) / 1e6];
 }
 
+// 위젯 자료: 다음 길의 지금 시간·도착·가장 빠른 출발 + 30분마다 시간 + 막힘 막대 + 길 위 사고·공사 (화면 앱과 같은 계산)
+const EMO_ = { crash: '💥', wrench: '🔧', warn: '⚠️', cone: '🚧', light: '🚦', rain: '🌧️', snow: '❄️', fog: '🌫️', wind: '💨', info: 'ℹ️' };
+function exGrp_(x) {
+  if (x.g) return x.g; const c = x.c;
+  return ['00', '01', '02', '16', '30', '31'].indexOf(c) >= 0 ? 'acc' : ['03', '75'].indexOf(c) >= 0 ? 'work' : c === '04' ? 'jam' : ['06', '09', '17', '18', '19', '20', '21'].indexOf(c) >= 0 ? 'wx' : 'etc';
+}
+function exEmo_(x) {
+  const g = exGrp_(x), k = x.k || '';
+  if (g === 'acc') return EMO_[/고장/.test(k) || x.c === '01' ? 'wrench' : /역주행|장애물|낙하/.test(k) || x.c === '02' || x.c === '16' ? 'warn' : 'crash'];
+  if (g === 'work') return EMO_.cone; if (g === 'jam') return EMO_.light;
+  if (g === 'wx') return EMO_[/눈|강설|적설|결빙/.test(k) ? 'snow' : /안개/.test(k) ? 'fog' : /강풍/.test(k) ? 'wind' : 'rain'];
+  return EMO_.info;
+}
 function widget_() {
   const t = nextTrip_(Date.now()), d = load_({ route: t.r, step: 30, hours: 3 }), n = d.slots[0];
   const mn = Math.min.apply(null, d.slots.map(x => x.min)), b = d.slots.filter(x => x.min === mn)[0];
-  return { route: d.route, name: ROUTES[d.route].name, short: ROUTES[d.route].short, min: n.min, arrive: kst_(n.t + n.min * 6e4, 'HH:mm'),
-    best: kst_(b.t, 'HH:mm'), bestMin: b.min, gain: n.min - b.min, at: kst_(Date.now(), 'HH:mm') };
+  // 막힘 막대: 구간 길이 비율과 막힘 정도(1 정체 ~ 4 원활), 비슷한 것끼리 합쳐 40칸 안쪽
+  const tot = d.path.reduce((a, x) => a + (x.d || 0), 0) || 1, bar = [];
+  d.path.forEach(x => { const f = (x.d || 0) / tot, last = bar[bar.length - 1]; if (last && (last[0] === x.s || f < .01)) last[1] += f; else bar.push([x.s, f]); });
+  // 길 위 사고·공사 (400m 안, 정체는 막힘 막대로 보이므로 뺀다), 가는 순서대로
+  let inc = [];
+  try {
+    const pts = []; d.path.forEach(x => x.p.forEach(q => pts.push(q)));
+    inc = exInfo_().items.filter(x => x.lat != null && exGrp_(x) !== 'jam').map(x => {
+      let bi = -1, bd = 400; pts.forEach((q, k) => { const m = Math.sqrt(Math.pow((q[0] - x.lon) * 88800, 2) + Math.pow((q[1] - x.lat) * 111000, 2)); if (m < bd) { bd = m; bi = k; } });
+      return { x: x, i: bi };
+    }).filter(o => o.i >= 0).sort((a, c) => a.i - c.i).map(o => ({ e: exEmo_(o.x), at: String(o.x.at || o.x.road || '').replace(/^\S+선 /, '').slice(0, 18), road: o.x.road, k: o.x.k }));
+  } catch (e) {}
+  const pn = { w2h: ['회사', '집'], h2w: ['집', '회사'], h2d: ['집', '숙소'] }[d.route] || ['출발', '도착'];
+  return { route: d.route, name: ROUTES[d.route].name, short: ROUTES[d.route].short, from: pn[0], to: pn[1], min: n.min, arrive: kst_(n.t + n.min * 6e4, 'HH:mm'),
+    best: kst_(b.t, 'HH:mm'), bestMin: b.min, gain: n.min - b.min, bestIsNow: b === n,
+    mins: d.slots.map(x => x.min), times: d.slots.map((x, i) => i ? kst_(x.t, 'HH:mm') : '지금'), bar: bar, inc: inc, at: kst_(Date.now(), 'HH:mm') };
 }
 
 /** 텔레그램 (스크립트 속성 TG_TOKEN · TG_CHAT_ID). 채팅 번호가 없으면 봇에게 온 메시지에서 찾아 기억한다 */

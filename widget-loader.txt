@@ -1,0 +1,17 @@
+// 출발 도우미 위젯 — Scriptable 앱에 이 글 전체를 붙여 넣어요. (처음 한 번만)
+// ▼ 여기 한 곳만 고쳐요: 따옴표 안에 앱 암호(서버 setup 실행 기록의 '앱 암호' 20글자)를 넣어요
+const PIN = "";
+
+// ---- 아래는 고치지 않아요. 위젯 본체를 인터넷에서 받아 항상 최신으로 유지해요. ----
+const SERVER = "https://script.google.com/macros/s/AKfycbwyReRZix1pjr-C_LnjUzmpriMJ64lQl8APAbmJ0UoOc57rOgkr0pTxFRJq2F0z14fZFA/exec";
+const fm = module.filename.includes("Documents/iCloud") || module.filename.includes("Mobile Documents") ? FileManager.iCloud() : FileManager.local();
+const dir = module.filename.slice(0, module.filename.lastIndexOf("/"));
+const core = fm.joinPath(dir, "commute-widget-core.js");
+try {
+  const r = new Request("https://friese8807.github.io/commute/widget-core.js?t=" + Date.now());
+  r.timeoutInterval = 15;
+  const code = await r.loadString();
+  if (code.includes("COMMUTE_WIDGET")) fm.writeString(core, code);   // 표식이 있을 때만 저장 (오류 페이지를 저장하지 않게)
+} catch (e) {}
+if (fm.isFileStoredIniCloud(core) && !fm.isFileDownloaded(core)) await fm.downloadFileFromiCloud(core);
+await importModule("commute-widget-core")({ server: SERVER, pin: PIN });
