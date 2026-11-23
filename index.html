@@ -222,7 +222,7 @@ html{background:var(--solid)}
 .map .cs{fill:none;stroke:var(--solid);stroke-linecap:round;stroke-linejoin:round}
 .map .rt{fill:none;stroke-linecap:round;stroke-linejoin:round}
 .map .pin{stroke:var(--solid);stroke-width:3}
-.map .pl{font-size:11px;font-weight:800;fill:var(--ink);paint-order:stroke;stroke:var(--solid);stroke-width:3px}
+.map .pl{pointer-events:none;font-size:11px;font-weight:800;fill:var(--ink);paint-order:stroke;stroke:var(--solid);stroke-width:3px}
 .map .jl{font-size:10.5px;font-weight:800;paint-order:stroke;stroke:var(--solid);stroke-width:3px}
 .mapw{position:relative}
 .mapw .ov{position:absolute;right:8px;top:8px;display:flex;gap:6px;z-index:5}
@@ -628,7 +628,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795442728';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795442813';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -970,9 +970,9 @@ function svgMap(el, d) {
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="길과 막히는 곳" style="overflow:hidden">${grid.join('')}<path d="${all}" class="cs" stroke-width="9"/>
     ${d.path.map((x, xi) => `<path d="${line(x.p)}" class="rt" stroke="${tsOf(x.s)[1]}" stroke-width="${F.length && isFoc(x, xi) ? 9 : 5}"/>`).join('')}
     ${pinSvg(nm[0], +X(a), +Y(a), 12)}${pinSvg(nm[1], +X(b), +Y(b), 12)}
-    ${incOf(d).map(x => incSvg(x, X, Y, popIdx(x))).join('')}
     ${S.focus?.at ? `<g transform="translate(${+X(S.focus.at.p) - 22} ${+Y(S.focus.at.p) - 18})" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">${carSvg(S.focus.at.left, 44)}</g>` : ''}
-    <text x="${+X(a) + 17}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 17}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text></svg>
+    <text x="${+X(a) + 17}" y="${+Y(a) + 4}" class="pl">${nm[0]}</text><text x="${+X(b) - 17}" y="${+Y(b) + 4}" text-anchor="end" class="pl">${nm[1]}</text>
+    ${incOf(d).map(x => incSvg(x, X, Y, popIdx(x))).join('')}</svg>
     <span class="why2">${F.length ? `<b style="color:var(--ink)">${esc(focusName(d))}</b> 구간을 보는 중` : S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
 }
 /* ── 지도 위 사고·공사: 짧은 이름표 + 누르면 아래에서 올라오는 시트에 자세히 (사용자가 고른 B안) ── */
