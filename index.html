@@ -628,7 +628,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795389930';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795442728';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -976,6 +976,7 @@ function svgMap(el, d) {
     <span class="why2">${F.length ? `<b style="color:var(--ink)">${esc(focusName(d))}</b> 구간을 보는 중` : S.cfg?.jsKey ? '카카오 지도를 불러오지 못해 길만 보여 줘요' : '카카오 지도 키를 넣으면 지도 위에 보여요'}</span>`;
 }
 /* ── 지도 위 사고·공사: 짧은 이름표 + 누르면 아래에서 올라오는 시트에 자세히 (사용자가 고른 B안) ── */
+const incDetail = x => incShort(x).split(' · ')[1] || '';
 function incShort(x) {
   const L = (x.lanes || []).map((v, i) => v ? i + 1 : 0).filter(Boolean), t = x.text || '';
   const w = /전면\s?통제/.test(t) ? '전면통제' : L.length ? L.join('·') + '차로' : x.sh || /갓길/.test(t) ? '갓길' : x.len ? x.len + 'km' : '';
@@ -991,16 +992,17 @@ function popHtml(x) {
 // 그림 지도용 이름표 (점 위에 알약)
 // 많으면(dot) 이름표 없이 색 점만 — 서로 겹쳐 읽을 수 없어서
 function incSvg(x, X, Y, i, dot) {
-  const lb = incShort(x), w = lb.length * 10.5 + 14, px = +X([x.lon, x.lat]), py = +Y([x.lon, x.lat]), c = EXL[grp(x)];
+  const lb = incDetail(x), w = lb.length * 10.5 + (lb ? 34 : 26), px = +X([x.lon, x.lat]), py = +Y([x.lon, x.lat]), c = EXL[grp(x)];
   if (dot) return `<g data-pop="${i}" style="cursor:pointer" transform="translate(${px} ${py})"><circle r="10" fill="transparent"/><circle r="7" fill="${c[1]}" stroke="#fff" stroke-width="2"/><text y="3.5" text-anchor="middle" font-size="10" font-weight="900" fill="${c[2]}">!</text></g>`;
   return `<g data-pop="${i}" style="cursor:pointer" transform="translate(${px} ${py})"><circle r="5" fill="${c[1]}" stroke="#fff" stroke-width="2"/>
-    <rect x="${-w / 2}" y="-30" width="${w}" height="20" rx="10" fill="${c[1]}" stroke="#fff" stroke-width="1.5"/><text y="-16" text-anchor="middle" font-size="11" font-weight="800" fill="${c[2]}">${esc(lb)}</text></g>`;
+    <rect x="${-w / 2}" y="-32" width="${w}" height="24" rx="12" fill="${c[1]}" stroke="#fff" stroke-width="1.5"/>${icoIn(x, -w / 2 + 13, -20, 15, c[2])}${lb ? `<text x="${-w / 2 + 24}" y="-16" font-size="11" font-weight="800" fill="${c[2]}">${esc(lb)}</text>` : ''}</g>`;
 }
 // 카카오 지도용 이름표: 카카오가 지도 안 누름을 가져가므로 요소에 직접 듣는다
 function incOverlay(km, map, x, i, dot) {
   const c = EXL[grp(x)], el = document.createElement('div');
   el.style.cssText = dot ? `background:${c[1]};color:${c[2]};width:20px;height:20px;line-height:16px;text-align:center;font-size:11px;font-weight:900;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer` : `background:${c[1]};color:${c[2]};font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:11px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer;white-space:nowrap`;
-  el.textContent = dot ? '!' : incShort(x);
+  el.style.display = 'inline-flex'; el.style.alignItems = 'center'; el.style.gap = '3px';
+  el.innerHTML = icoSvg(x, 14, c[2]) + (dot ? '' : esc(incDetail(x)));
   ['mousedown', 'touchstart', 'pointerdown'].forEach(t => el.addEventListener(t, e => e.stopPropagation(), { passive: true }));
   el.addEventListener('click', e => { e.stopPropagation(); openPop(i, map._kind); });
   new km.CustomOverlay({ map, position: new km.LatLng(x.lat, x.lon), yAnchor: 1.3, zIndex: 4, content: el, clickable: true });
@@ -1016,7 +1018,8 @@ const closePop = () => { S.pop = null; sheet.close(); };
 function numSvg(x, X, Y) {
   const n = S.hwNum?.get(x), i = popIdx(x), c = EXL[grp(x)], on = S.hwSel === i, px = +X([x.lon, x.lat]), py = +Y([x.lon, x.lat]), r = on ? 14 : 10, lb = incShort(x), w = lb.length * 10.5 + 14;
   return `<g data-hwpin="${i}" style="cursor:pointer" transform="translate(${px} ${py})"><circle r="${r + 4}" fill="transparent"/>${on ? `<circle r="${r + 5}" fill="none" stroke="${c[1]}" stroke-width="3" opacity=".5"/>` : ''}
-    <circle r="${r}" fill="${c[1]}" stroke="#fff" stroke-width="2"/><text y="${on ? 5 : 4}" text-anchor="middle" font-size="${on ? 13 : 11}" font-weight="900" fill="${c[2]}">${n || ''}</text>
+    <circle r="${r + 2}" fill="${c[1]}" stroke="#fff" stroke-width="2"/>${icoIn(x, 0, 0, on ? 17 : 13, c[2])}
+    ${n ? `<g transform="translate(${r} ${-r})"><circle r="7.5" fill="var(--solid)" stroke="${c[1]}" stroke-width="1.5"/><text y="3.5" text-anchor="middle" font-size="9.5" font-weight="900" fill="var(--ink)">${n}</text></g>` : ''}
     ${on ? `<rect x="${-w / 2}" y="-46" width="${w}" height="20" rx="10" fill="var(--ink)"/><text y="-32" text-anchor="middle" font-size="11" font-weight="800" fill="var(--solid)">${esc(lb)}</text>` : ''}</g>`;
 }
 function hwSvg(el) {
@@ -1040,7 +1043,8 @@ function hwKakao(el) {
   if (L.length || R.length) map.setBounds(bd, 40, 40, 40, 40);
   L.forEach(x => { const i = popIdx(x), c = EXL[grp(x)], on = S.hwSel === i, el2 = document.createElement('div'), sz = on ? 30 : 22;
     el2.style.cssText = `background:${c[1]};color:${c[2]};width:${sz}px;height:${sz}px;line-height:${sz - 4}px;text-align:center;font-size:${on ? 14 : 12}px;font-weight:900;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 ${on ? 4 : 0}px ${c[1]}66,0 1px 3px rgba(0,0,0,.3);cursor:pointer`;
-    el2.textContent = S.hwNum?.get(x) || '';
+    el2.style.position = 'relative'; el2.style.display = 'grid'; el2.style.placeItems = 'center';
+    el2.innerHTML = icoSvg(x, on ? 18 : 14, c[2]) + (S.hwNum?.get(x) ? `<b style="position:absolute;right:-8px;top:-8px;min-width:16px;height:16px;line-height:14px;border-radius:8px;background:#fff;color:#111;border:1.5px solid ${c[1]};font-size:9.5px">${S.hwNum.get(x)}</b>` : '');
     ['mousedown', 'touchstart', 'pointerdown'].forEach(t => el2.addEventListener(t, e => e.stopPropagation(), { passive: true }));
     el2.addEventListener('click', e => { e.stopPropagation(); hwPick(i, 'map'); });
     new km.CustomOverlay({ map, position: new km.LatLng(x.lat, x.lon), zIndex: on ? 9 : 4, content: el2, clickable: true }); });
@@ -1140,7 +1144,19 @@ const EXG = c => ['00', '01', '02', '16', '30', '31'].includes(c) ? 'acc' : ['03
 const EXL = { acc: ['사고·고장', '#e5484d', '#fff'], work: ['공사', '#f07a32', '#fff'], jam: ['정체', '#e9b10c', '#3d2c00'], wx: ['날씨', '#4f93c9', '#fff'], etc: ['기타', '#8a94a3', '#fff'] };
 const grp = x => x.g || EXG(x.c);
 const exLabel = x => x.c === '03' ? '공사' : x.c === '04' ? '정체' : x.k || '기타';
-const exPill = x => { const g = EXL[grp(x)]; return `<em class="xp" style="background:${g[1]};color:${g[2]}">${esc(exLabel(x))}</em>`; };
+// 종류 아이콘: 휴대폰 그림 글자(이모지) + 글자 (사용자가 고른 C안)
+const EMO = { crash: '💥', wrench: '🔧', warn: '⚠️', cone: '🚧', light: '🚦', rain: '🌧️', snow: '❄️', fog: '🌫️', wind: '💨', info: 'ℹ️' };
+function icoKey(x) {
+  const g = grp(x), k = x.k || '';
+  if (g === 'acc') return /고장/.test(k) || x.c === '01' ? 'wrench' : /역주행|장애물|낙하/.test(k) || ['02', '16'].includes(x.c) ? 'warn' : 'crash';
+  if (g === 'work') return 'cone'; if (g === 'jam') return 'light';
+  if (g === 'wx') return /눈|강설|적설|결빙/.test(k) ? 'snow' : /안개/.test(k) ? 'fog' : /강풍/.test(k) ? 'wind' : 'rain';
+  return 'info';
+}
+const icoSvg = (x, sz) => `<span style="font-size:${sz - 2}px;line-height:1">${EMO[icoKey(x)]}</span>`;
+// SVG 지도 안에 넣을 아이콘 (중심 cx,cy)
+const icoIn = (x, cx, cy, sz) => `<text x="${cx}" y="${cy + sz * .36}" text-anchor="middle" font-size="${sz}">${EMO[icoKey(x)]}</text>`;
+const exPill = x => { const g = EXL[grp(x)]; return `<em class="xp" style="background:${g[1]};color:${g[2]};display:inline-flex;align-items:center;gap:3px">${icoSvg(x, 14)}${esc(exLabel(x))}</em>`; };
 const METRO = ['경부선', '수도권제1순환선', '수도권제2순환선', '용인서울선', '서해안선', '영동선', '중부선', '경인선', '제2경인선', '제3경인선', '평택시흥선', '광주원주선', '세종포천선', '인천공항선', '신월여의지하도로', '서울양양선', '화성광주선', '봉담동탄선', '평택파주선', '안양성남선'];
 // 길에서 tol 미터 안에 있는 사건인지 (좌표 없는 문자 안내는 빼고)
 function routeIdx(x, d, tol) {
