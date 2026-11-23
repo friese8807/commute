@@ -628,7 +628,7 @@ const AppKit = (() => {
 })();
 </script>
 <script>
-const BUILD = '1795443558';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
+const BUILD = '1795444241';            // version.txt 와 같은 숫자 — scripts/bump_version.py 가 함께 바꾼다
 AppKit.fixViewport({ gap: false });   // 높이 보정은 끈 채로 시작. 휴대폰에서 아래 띠가 보일 때만 켠다
 AppKit.autoUpdate(BUILD);
 AppKit.showErrors(BUILD);
@@ -1231,7 +1231,10 @@ function viewSet() {
     <label class="fld"><span>서버 주소 (…/exec)</span><input id="cUrl" inputmode="url" autocomplete="off" value="${esc(cn.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label>
     <label class="fld"><span>앱 암호</span><input id="cKey" type="password" autocomplete="off" value="${esc(cn.key)}" placeholder="서버에 정한 암호"></label>
     <button class="btn" type="button" data-act="conn">${S.demo ? '연결하기' : '다시 연결'}</button></div>`;
-  if (!c) return server + cfgWait();
+  const widget = S.demo ? '' : `<div class="card"><h2>아이폰 위젯</h2><p>Scriptable 앱에 붙여 넣을 코드예요. 서버 주소와 앱 암호가 이미 들어 있어서 고칠 곳이 없어요.</p>
+    <button class="btn" type="button" data-act="wcopy">위젯 코드 복사</button>
+    <p class="note" style="margin-bottom:0">붙여 넣는 법: <a href="widget.html" target="_blank" rel="noopener">설치 안내</a> 3·4번. 이미 붙여 넣었다면 Scriptable에서 그 코드를 지우고 새로 붙여 넣어요.</p></div>`;
+  if (!c) return server + widget + cfgWait();
   const P = c.places || {};
   const places = `<div class="card"><h2>장소</h2>
     <label class="fld"><span>회사 (마곡)</span><input data-place="work" value="${esc(P.work || '')}" placeholder="회사 주소나 건물 이름"></label>
@@ -1270,7 +1273,7 @@ function viewSet() {
     ${c.seoul ? '<p class="ak-center">올림픽대로·서부간선도로 같은 서울 도로의 사고·공사도 받아요.</p></div>' : `<ol class="steps"><li><b>data.seoul.go.kr</b>(서울 열린데이터광장)에 로그인 → 위쪽 <b>인증키 신청</b> → <b>일반 인증키</b>를 신청하면 바로 나와요 (사용 목적: 개인 출퇴근 정보).</li>
       <li>서버 편집기 → 프로젝트 설정 → 스크립트 속성에 <code>SEOUL_KEY</code> 로 넣어요.</li></ol>
     <p class="note" style="margin-bottom:0">키가 없으면 고속도로(한국도로공사) 정보만 보여요.</p></div>`}`;
-  return (S.demo ? server : '') + places + car + look + days + kakao + jsCard + exCard + seoulCard + (S.demo ? '' : server) + `<p class="diag">${AppKit.env(BUILD)}</p>`;
+  return (S.demo ? server : '') + widget + places + car + look + days + kakao + jsCard + exCard + seoulCard + (S.demo ? '' : server) + `<p class="diag">${AppKit.env(BUILD)}</p>`;
 }
 
 /* ── 탭 ── */
@@ -1281,6 +1284,7 @@ const tabs = AppKit.tabs({
     const sc = document.getElementById('sc');
     sc.innerHTML = id === 'now' ? viewNow() : id === 'hw' ? viewHw() : id === 'alarm' ? viewAlarm() : viewSet();
     if (id === 'hw' && !S.ex) loadEx();
+    if (id === 'set' && !S.wl) fetch('widget-loader.txt?t=' + Date.now()).then(r => r.ok ? r.text() : null).then(t => { S.wl = t; }).catch(() => {});
     if (id === 'now' || id === 'hw') requestAnimationFrame(drawMaps);
   },
 });
@@ -1295,6 +1299,14 @@ document.addEventListener('click', async e => {
   if ((b = q('[data-base]'))) { S.base = b.dataset.base; S.sel = null; tabs.redraw(); return refresh(); }
   if ((b = q('[data-sel]'))) { S.sel = +b.dataset.sel; document.querySelectorAll('.bars button').forEach((x, i) => x.classList.toggle('sel', i === S.sel)); document.getElementById('pick').innerHTML = pickLine(S.data); return; }
   if ((b = q('[data-act="retry"]'))) return refresh();
+  if ((b = q('[data-act="wcopy"]'))) {
+    const c = conn();
+    if (!S.wl) S.wl = await fetch('widget-loader.txt?t=' + Date.now()).then(r => r.text()).catch(() => null);
+    if (!S.wl || !S.wl.includes('const PIN = "";')) return AppKit.toast('코드를 불러오지 못했어요. 잠시 뒤 다시 눌러 주세요');
+    let t = S.wl.replace('const PIN = "";', 'const PIN = ' + JSON.stringify(c.key) + ';');
+    if (c.url) t = t.replace(/const SERVER = "[^"]*";/, 'const SERVER = ' + JSON.stringify(c.url) + ';');
+    return AppKit.copy(t);
+  }
   if ((b = q('[data-act="cfg"]'))) { S.cfgErr = null; tabs.redraw(); return loadCfg(); }
   if ((b = q('[data-focus]'))) { const f = b.dataset.focus; S.focus = f && S.focus?.n !== f ? { n: f } : null; tabs.redraw();
     document.querySelector('[data-map]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }

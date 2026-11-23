@@ -110,7 +110,7 @@ module.exports = async function (opts) {
   const d = await getData(opts);
   if (!d) {
     txt(w, "출발 도우미", 13, fam.startsWith("accessory") ? Color.white() : C.ink, "b");
-    txt(w, opts.server && opts.pin ? "불러오지 못했어요" : "코드 맨 위에 서버 주소·암호를 넣어 주세요", 11, fam.startsWith("accessory") ? Color.white() : C.sub, "r", 0.5);
+    txt(w, opts.server && opts.pin ? "불러오지 못했어요" : "앱 설정 → 아이폰 위젯에서 코드를 다시 복사해 붙여 넣어 주세요", 11, fam.startsWith("accessory") ? Color.white() : C.sub, "r", 0.5);
     w.refreshAfterDate = new Date(Date.now() + 10 * 60 * 1000);
   } else {
     if (fam.startsWith("accessory")) accessory(w, d, fam);
