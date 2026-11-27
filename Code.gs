@@ -507,9 +507,12 @@ function pushTo_(match, title, body) {
       const k = msgKey_(t.endpoint); let list = [];
       try { list = JSON.parse(c.get(k) || '[]'); } catch (e) {}
       list.push({ title: String(title).slice(0, 80), body: String(body).slice(0, 300) }); c.put(k, JSON.stringify(list.slice(-5)), 21600);
-      const res = UrlFetchApp.fetch(t.endpoint, { method: 'post', payload: '', muteHttpExceptions: true,
-        headers: { TTL: '86400', Urgency: 'high', Authorization: 'vapid t=' + jwt_(v, t.endpoint.match(/^https:\/\/[^\/]+/)[0]) + ', k=' + v.pub } });
-      const code = res.getResponseCode(), txt = code + ' ' + String(res.getContentText() || '').slice(0, 120);
+      let code = 0, txt;
+      try {
+        const res = UrlFetchApp.fetch(t.endpoint, { method: 'post', payload: '', muteHttpExceptions: true,
+          headers: { TTL: '86400', Urgency: 'high', Authorization: 'vapid t=' + jwt_(v, t.endpoint.match(/^https:\/\/[^\/]+/)[0]) + ', k=' + v.pub } });
+        code = res.getResponseCode(); txt = code + ' ' + String(res.getContentText() || '').slice(0, 120);
+      } catch (e) { txt = '오류 ' + String(e).slice(0, 120); }   // 실패도 기록해 서버 점검에서 보이게
       out.push(txt); t.last = Utilities.formatDate(new Date(), 'Asia/Seoul', 'MM-dd HH:mm') + ' ' + txt;
       if (code === 404 || code === 410) gone[t.endpoint] = 1;
     });
