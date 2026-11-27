@@ -54,7 +54,7 @@ function handle_(b) {
     if (b.action === 'health') {
       const pl = json_('PLACES', {});
       return { ok: true, data: { setup: !!P.getProperty('APP_KEY'), kakao: !!P.getProperty('KAKAO_REST_KEY'), ex: !!P.getProperty('EX_KEY'), jsKey: !!P.getProperty('KAKAO_JS_KEY'), ex: !!P.getProperty('EX_KEY'), tg: !!P.getProperty('TG_TOKEN'),
-        chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick'), seoul: !!P.getProperty('SEOUL_KEY'), seoulData: (() => { try { const L = seoulInfo_(); return L.length + '건 (좌표 ' + L.filter(x => x.lat).length + ')'; } catch (e) { return '오류: ' + plain_(e).slice(0, 80); } })() } };
+        chat: !!P.getProperty('TG_CHAT_ID'), places: !!(pl.work && pl.home && pl.dorm), trigger: ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'tick'), push: pushList_().map(x => (x.endpoint.match(/^https:\/\/([^\/]+)/) || [])[1] + ' ' + (x.at || '') + ' / ' + (x.last || '안 보냄')).join(' | ') || '구독 0', sent: P.getProperty('SENT') || '-', alerts: JSON.stringify(cfg_().alerts), today: todayRoutes_(day_()).join(',') || '없음', seoul: !!P.getProperty('SEOUL_KEY'), seoulData: (() => { try { const L = seoulInfo_(); return L.length + '건 (좌표 ' + L.filter(x => x.lat).length + ')'; } catch (e) { return '오류: ' + plain_(e).slice(0, 80); } })() } };
     }
     const key = P.getProperty('APP_KEY');
     if (!key) return { ok: false, code: 'setup', message: '서버 준비가 아직이에요. 편집기에서 setup() 을 한 번 실행해 주세요' };
