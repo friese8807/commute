@@ -36,3 +36,12 @@
 - 공휴일 추가(2028년 등): `index.html`과 `Code.gs`의 `HOL` 목록에 같은 줄을 넣어요. 연차는 앱 설정 → 쉬는 날 더하기로 충분해요.
 - 알림 시각: 앱 → 알림 탭에서 바로 바꿔요(누르는 즉시 저장).
 - 전기차 통행료 할인율: `index.html`의 `EV_RATE` 표(2026년 30% · 2027년 20%, 2027년 말 종료). 제도가 바뀌면 이 표만 고쳐요.
+
+## 데스크톱 미리보기 (Claude 데스크톱 오른쪽 패널)
+
+```bash
+node tools/preview.cjs index.html --out /tmp/preview.html   # 아이폰 틀 · ☀️주간/🌙야간 · 마우스로 끌어서 스크롤 · 서버 없으면 예시 모드
+```
+
+자료 파일로 보기는 `--data 자료.json`(서버 응답 흉내), 시각 고정은 `--now 2026-12-03T07:40`. 미리보기 파일은 저장소 밖에 만든다.
+도구는 friese-mobile-webapp-kit 스킬의 `scripts/preview.cjs` 와 같다.
